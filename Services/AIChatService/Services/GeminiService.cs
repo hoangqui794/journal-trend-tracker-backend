@@ -21,9 +21,9 @@ namespace AIChatService.Services
 
         public async Task<string> GenerateResponseAsync(string prompt, string context = "")
         {
-            if (string.IsNullOrEmpty(_apiKey) || _apiKey == "YOUR_GEMINI_API_KEY_HERE")
+            if (string.IsNullOrEmpty(_apiKey) || _apiKey.Contains("YOUR_"))
             {
-                return "AI: Xin lỗi, API Key chưa được cấu hình. Vui lòng kiểm tra appsettings.json.";
+                return "AI: Xin lỗi, API Key chưa được cấu hình. Vui lòng sử dụng 'dotnet user-secrets set \"Gemini:ApiKey\" \"YOUR_KEY\"' để cài đặt locally.";
             }
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
