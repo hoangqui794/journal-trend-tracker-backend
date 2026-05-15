@@ -1,123 +1,204 @@
-# Bảng Phân Công Nhiệm Vụ 5 Microservices (Nhóm 5 Thành Viên)
+# 🚀 Bảng Phân Công Nhiệm Vụ 5 Microservices (Final)
 
-Bảng phân công này được thiết kế để đảm bảo khối lượng công việc công bằng, không chồng chéo code, mỗi người làm chủ hoàn toàn một Service và một Database riêng biệt theo đúng chuẩn mô hình Microservices của đề tài.
+> **Kiến trúc:** Microservices | **Framework:** .NET 8.0 (Clean Architecture) | **Database:** PostgreSQL
+> **Gateway:** YARP | **Message:** HTTP trực tiếp giữa services | **Auth:** JWT + Google OAuth 2.0
 
-```mermaid
-mindmap
-  root((Đồ Án Nhóm 5))
-    Thành viên 1
-      Auth Service
-      auth_db
-      Quản lý User & JWT
-    Thành viên 2
-      Document Service
-      document_db
-      Metadata & Sync API
-    Thành viên 3
-      Storage Service
-      storage_db
-      SDK Cloud & File Stream
-    Thành viên 4
-      AI Chat Service
-      aichat_db
-      RAG Chatbot & Lịch sử
-    Thành viên 5
-      Admin Service
-      admin_db
-      Quản trị & Kiểm duyệt
-```
+Mỗi người làm chủ 1 Service và 1 Database riêng biệt.
+**Cấm tuyệt đối** truy cập trực tiếp vào Database của người khác — giao tiếp qua HTTP API call.
 
 ---
 
-## 🧑‍💻 Thành viên 1: Quản lý Xác thực & Tài khoản (`AuthService`)
-* **Database phụ trách:** `auth_db` (Bảng `Users`, `RefreshTokens`).
-* **Vai trò:** Đảm bảo an ninh và xác thực danh tính cho toàn bộ hệ thống (Yêu cầu chức năng 1).
+## 🧑‍💻 Thành viên 1 (P1): `IdentityService` & API Gateway
 
-### Danh sách API cần phát triển:
-1. `POST /api/auth/register`: Đăng ký tài khoản mới (mã hóa mật khẩu bằng BCrypt/Argon2).
-2. `POST /api/auth/login`: Xác thực thông tin đăng nhập, sinh chuỗi Access Token (JWT) và Refresh Token.
-3. `POST /api/auth/refresh-token`: Cấp lại Access Token mới khi token cũ hết hạn.
-4. `POST /api/auth/logout`: Đăng xuất (thu hồi Refresh Token).
-5. `POST /api/auth/forgot-password`: Xử lý quên mật khẩu (gửi email reset).
-6. `GET /api/auth/profile`: Lấy thông tin cá nhân của User đang đăng nhập.
-7. `PUT /api/auth/profile`: Cập nhật thông tin profile (họ tên, avatar).
+**Database phụ trách:** `identity_db`
+**Bảng:** `users`, `refresh_tokens`
+**Vai trò:** Bảo mật, xác thực, phân quyền và định tuyến toàn bộ request qua YARP Gateway.
 
----
+### API cần code
 
-## 🧑‍💻 Thành viên 2: Quản lý Tài liệu & Đồng bộ Học thuật (`DocumentService`)
-* **Database phụ trách:** `document_db` (Bảng `Subjects`, `Documents`).
-* **Vai trò:** Trái tim của hệ thống lưu trữ dữ liệu tài liệu nội bộ và các bài báo khoa học kéo từ API quốc tế (Yêu cầu 2 & Ghi chú hệ thống).
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| POST | `/api/identity/register` | Đăng ký tài khoản mới (BCrypt hash password) |
+| POST | `/api/identity/login` | Đăng nhập email/password, trả JWT + Refresh Token |
+| POST | `/api/identity/refresh` | Làm mới Access Token khi hết hạn |
+| POST | `/api/identity/logout` | Thu hồi Refresh Token (đăng xuất) |
+| GET  | `/api/identity/auth/google` | Redirect sang trang đăng nhập Google |
+| GET  | `/api/identity/auth/google/callback` | Nhận callback từ Google, cấp JWT |
+| GET  | `/api/identity/users/{id}` | Lấy thông tin user — **internal only** (các service khác gọi) |
+| PUT  | `/api/identity/users/{id}/status` | Khoá / Mở khoá tài khoản — **internal only** (AdminService gọi) |
 
-### Danh sách API & Task cần phát triển:
-1. `GET /api/subjects`: Lấy danh sách môn học/lĩnh vực (dùng cho bộ lọc).
-2. `POST /api/documents`: Tạo mới hồ sơ tài liệu (khi người dùng upload file).
-3. `GET /api/documents`: Lấy danh sách tài liệu (hỗ trợ phân trang, tìm kiếm theo `title`/`authors`, lọc theo `subject_id` hoặc `external_source`).
-4. `GET /api/documents/{id}`: Xem chi tiết thông tin metadata của tài liệu/bài báo.
-5. `PUT /api/documents/{id}`: Chỉnh sửa thông tin metadata tài liệu.
-6. `DELETE /api/documents/{id}`: Xóa tài liệu (chỉ áp dụng với tài liệu do chính User đó upload).
-7. **Background Worker (Sync Task):** Viết một `BackgroundService` chạy ngầm định kỳ (mỗi ngày 1 lần) gọi API miễn phí của Semantic Scholar hoặc OpenAlex để lấy danh sách bài báo mới thuộc lĩnh vực CS/AI và lưu tự động vào DB.
+### Task Gateway (YARP)
+- Cấu hình routing tất cả `/api/*` đến đúng service theo port
+- Middleware xác thực JWT tại Gateway trước khi forward request
+- Cấu hình CORS, rate limiting
 
----
-
-## 🧑‍💻 Thành viên 3: Quản lý File & Lưu trữ Đám mây (`StorageService`)
-* **Database phụ trách:** `storage_db` (Bảng `StorageFiles`).
-* **Vai trò:** Xử lý luồng file vật lý dung lượng lớn và giao tiếp trực tiếp với SDK Cloud (AWS S3, Cloudinary hoặc Google Drive).
-
-### Danh sách API cần phát triển:
-1. `POST /api/storage/upload`: Nhận file stream từ client, đẩy thẳng lên Cloud Storage, lưu thông tin vào bảng `StorageFiles` với trạng thái `Uploading`/`Completed`.
-2. `GET /api/storage/status/{id}`: Kiểm tra tiến trình và trạng thái upload file.
-3. `GET /api/storage/preview/{id}`: Trả về URL an toàn để xem trước (preview) file pdf/ảnh trên trình duyệt.
-4. `GET /api/storage/download/{id}`: Trả về URL tải xuống (download) trực tiếp.
-5. `DELETE /api/storage/{id}`: Xóa file vật lý trên Cloud khi tài liệu bị xóa.
+### Lưu ý
+- Dùng thư viện `Google.Apis.Auth` để verify Google ID Token
+- Access Token TTL: 15 phút | Refresh Token TTL: 7 ngày
+- 3 role: `researcher`, `lecturer`/`student`, `admin`
 
 ---
 
-## 🧑‍💻 Thành viên 4: Trợ lý AI Hỏi Đáp (`AIChatService`)
-* **Database phụ trách:** `aichat_db` (Bảng `ChatSessions`, `ChatMessages`).
-* **Vai trò:** Tích hợp trí tuệ nhân tạo (LLM) hỗ trợ sinh viên/nhà nghiên cứu hỏi đáp nội dung chuyên sâu của bài báo (Yêu cầu chức năng 4).
+## 🧑‍💻 Thành viên 2 (P2): `PaperService` & Sync Worker
 
-### Danh sách API cần phát triển:
-1. `POST /api/chat/sessions`: Khởi tạo một phiên trò chuyện mới (có thể chọn gắn với một `DocumentId` cụ thể hoặc chat tự do).
-2. `GET /api/chat/sessions`: Lấy danh sách các phiên chat của User đang đăng nhập.
-3. `GET /api/chat/sessions/{sessionId}/messages`: Lấy toàn bộ lịch sử tin nhắn trong một phiên chat.
-4. `POST /api/chat/ask`: Gửi câu hỏi của User. Service sẽ kết nối API của Google Gemini hoặc OpenAI, áp dụng kỹ thuật RAG (Retrieval-Augmented Generation) lấy tóm tắt/abstract của tài liệu làm ngữ cảnh, và trả về câu trả lời cho Client.
-5. `DELETE /api/chat/sessions/{sessionId}`: Xóa lịch sử phiên chat.
+**Database phụ trách:** `paper_db`
+**Bảng:** `papers`, `authors`, `keywords`, `journals`, `paper_authors`, `paper_keywords`, `api_sync_jobs`, `sync_cursors`, `sync_errors`
+**Vai trò:** Trái tim hệ thống — tìm kiếm bài báo, đồng bộ dữ liệu từ API ngoài, lưu lịch sử tìm kiếm.
+
+### API cần code
+
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET  | `/api/papers` | Tìm kiếm bài báo (`?keyword=&year=&journalId=&authorId=&source=&page=&pageSize=`) |
+| GET  | `/api/papers/{id}` | Chi tiết 1 bài báo kèm tác giả, từ khóa, journal |
+| GET  | `/api/papers/keywords` | Danh sách từ khóa gợi ý (dùng cho bộ lọc + autocomplete) |
+| GET  | `/api/papers/journals` | Danh sách tạp chí |
+| GET  | `/api/papers/authors` | Danh sách tác giả |
+| POST | `/api/papers/search-history` | Lưu lịch sử tìm kiếm của user (tự gọi nội bộ sau mỗi search) |
+| GET  | `/api/papers/sync-jobs` | Xem lịch sử sync — **internal only** (AdminService gọi) |
+
+### Sync Worker (BackgroundService)
+- Chạy **cronjob lúc 00:00 mỗi đêm** gọi OpenAlex API và Semantic Scholar API
+- Kéo metadata bài báo mới về lưu vào `paper_db`
+- Ghi log vào `api_sync_jobs`, lưu cursor vào `sync_cursors` để tiếp tục nếu bị gián đoạn
+- Sau khi sync xong → **gọi HTTP sang UserService** (`POST /api/users/notifications/trigger`) để trigger notification cho user đang follow keyword có bài mới
+
+### Lưu ý
+- Gọi `POST /api/papers/search-history` tự động sau mỗi request search (không cần FE gọi)
+- Chỉ lưu metadata (title, abstract, keywords, year, authors, journal) — không lưu full-text
+- Dùng `sync_cursors` để lưu offset/page token, tránh sync lại từ đầu khi bị lỗi giữa chừng
 
 ---
 
-## 🧑‍💻 Thành viên 5: Quản trị Hệ thống & Kiểm duyệt (`AdminService`)
-* **Database phụ trách:** `admin_db` (Bảng `SystemConfigs`, `AuditLogs`).
-* **Vai trò:** Đảm bảo trật tự, giám sát tài nguyên và phân tích hoạt động của toàn bộ hệ thống.
+## 🧑‍💻 Thành viên 3 (P3): `TrendService`
 
-### Danh sách API cần phát triển:
-1. `GET /api/admin/configs`: Xem danh sách cấu hình hệ thống (vd: dung lượng tối đa, model AI đang dùng).
-2. `PUT /api/admin/configs`: Cập nhật cấu hình hệ thống runtime (không cần restart server).
-3. `POST /api/admin/moderate/document/{id}`: Admin kiểm duyệt, phê duyệt (`Approved`) hoặc gỡ bỏ (`Rejected`) tài liệu vi phạm. Ghi tự động vào bảng `AuditLogs`.
-4. `POST /api/admin/moderate/user/{id}`: Admin khóa (`Locked`) hoặc mở khóa (`Active`) tài khoản người dùng vi phạm.
-5. `GET /api/admin/audit-logs`: Xem lịch sử thao tác kiểm duyệt của hệ thống.
-6. `GET /api/admin/analytics`: API thống kê tổng quan (số tài liệu theo môn học, tổng số user, tổng lượt tải/xem).
+**Database phụ trách:** `trend_db`
+**Bảng:** `trend_snapshots`, `journal_trend_snapshots`, `search_history`, `report_cache`
+**Vai trò:** Tổng hợp số liệu, vẽ biểu đồ dashboard, export báo cáo.
+
+### API cần code
+
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET | `/api/trends/keywords/{keywordId}` | Số bài báo theo từng năm của 1 keyword → FE vẽ Line Chart |
+| GET | `/api/trends/journals/{journalId}` | Số bài báo theo từng năm của 1 journal → FE vẽ Line Chart |
+| GET | `/api/trends/top-keywords` | Top 10 keyword nổi bật nhất (theo số bài + tăng trưởng) |
+| GET | `/api/trends/top-authors` | Top 10 tác giả có nhiều bài xuất bản nhất |
+| GET | `/api/trends/top-journals` | Top 10 tạp chí phổ biến nhất |
+| GET | `/api/trends/overview` | Số liệu tổng quan: tổng bài báo, tổng tác giả, tổng keyword |
+| GET | `/api/trends/hot-topics` | Các chủ đề đang nổi bật dựa trên search_history |
+| GET | `/api/trends/reports/export` | Export báo cáo xu hướng ra file CSV hoặc Excel (`?format=csv&keywordId=`) |
+
+### Lưu ý quan trọng
+- **KHÔNG** đọc thẳng `paper_db` — gọi API sang PaperService để lấy data
+- Tính toán xong lưu kết quả vào `trend_snapshots` để dùng lại (cache)
+- `search_history` trong `trend_db` nhận data từ PaperService gửi sang sau mỗi lần user search
+- Dùng `report_cache` để cache kết quả export, tránh tính lại nhiều lần
+- Dùng thư viện `ClosedXML` để xuất file Excel
 
 ---
 
-## 📋 Hướng dẫn phối hợp nhóm (Workflow Upload Tài liệu)
-Để các bạn dễ hình dung cách các service giao tiếp với nhau khi một sinh viên upload tài liệu mới:
+## 🧑‍💻 Thành viên 4 (P4): `UserService` (Tương tác & Thông báo)
 
-```mermaid
-sequenceDiagram
-    actor Client
-    participant Auth as AuthService
-    participant Doc as DocumentService
-    participant Store as StorageService
+**Database phụ trách:** `user_db`
+**Bảng:** `user_profiles`, `bookmarks`, `follows`, `notifications`, `email_queue`
+**Vai trò:** Xử lý tương tác cá nhân của người dùng, quản lý thông báo và gửi email.
 
-    Client->>Auth: 1. Gửi Token đăng nhập
-    Auth-->>Client: Xác thực thành công (Lấy UserId)
-    
-    Client->>Store: 2. Upload file PDF lên StorageService
-    Store->>Cloud: Đẩy file lên Cloud (S3 / Cloudinary)
-    Cloud-->>Store: Trả về CloudKey & Link Preview
-    Store-->>Client: Trả về StorageFileId
-    
-    Client->>Doc: 3. Gửi thông tin (Title, SubjectId, StorageFileId)
-    Doc->>Doc: Lưu vào document_db
-    Doc-->>Client: Hoàn tất đăng tải!
-```
+### API cần code
+
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET  | `/api/users/profile` | Lấy thông tin Profile người dùng |
+| PUT  | `/api/users/profile` | Cập nhật Profile (bio, institution, research fields) |
+| POST | `/api/users/bookmarks` | Thêm bookmark (paper / keyword / journal) |
+| DELETE | `/api/users/bookmarks/{id}` | Xóa bookmark |
+| GET  | `/api/users/bookmarks` | Danh sách bookmark của user (có filter theo entity_type) |
+| POST | `/api/users/follows/keywords/{keywordId}` | Follow 1 keyword |
+| POST | `/api/users/follows/journals/{journalId}` | Follow 1 journal |
+| DELETE | `/api/users/follows/{id}` | Unfollow |
+| GET  | `/api/users/follows` | Danh sách đang follow |
+| GET  | `/api/users/notifications` | Danh sách thông báo (có filter is_read) |
+| PUT  | `/api/users/notifications/{id}/read` | Đánh dấu 1 thông báo đã đọc |
+| PUT  | `/api/users/notifications/read-all` | Đánh dấu tất cả đã đọc |
+| POST | `/api/users/notifications/trigger` | **Internal only** — PaperService gọi để tạo notification khi có bài mới |
+
+### Lưu ý
+- Khi nhận trigger từ PaperService: tìm tất cả user đang follow keyword đó → tạo notification trong `notifications` + thêm vào `email_queue`
+- Background job nhỏ trong UserService xử lý `email_queue` → gửi email thật qua SMTP (dùng `MailKit`)
+- `user_id` trong `user_db` không có FK sang `identity_db` — validate user tồn tại bằng cách gọi `GET /api/identity/users/{id}`
+
+---
+
+## 🧑‍💻 Thành viên 5 (P5): `AdminService` & DevOps
+
+**Database phụ trách:** `admin_db`
+**Bảng:** `api_sources`, `system_settings`, `audit_logs`
+**Vai trò:** Quản trị hệ thống và triển khai toàn bộ dự án bằng Docker.
+
+### API cần code
+
+| Method | Endpoint | Mô tả |
+|--------|----------|-------|
+| GET  | `/api/admin/users` | Danh sách người dùng — gọi sang IdentityService |
+| PUT  | `/api/admin/users/{id}/toggle` | Khoá / Mở khoá tài khoản — gọi sang IdentityService |
+| GET  | `/api/admin/api-sources` | Danh sách nguồn đồng bộ (OpenAlex, SemanticScholar...) |
+| PUT  | `/api/admin/api-sources/{id}/toggle` | Bật / Tắt đồng bộ 1 nguồn |
+| GET  | `/api/admin/sync-jobs` | Xem lịch sử sync — gọi sang PaperService |
+| GET  | `/api/admin/settings` | Lấy cấu hình hệ thống |
+| PUT  | `/api/admin/settings` | Lưu cấu hình mới |
+| GET  | `/api/admin/logs` | Xem audit logs — lịch sử thao tác của admin |
+
+### Task DevOps (Docker)
+- Viết `docker-compose.yml` chạy đồng thời:
+  - 5 PostgreSQL (mỗi service 1 container, 1 port riêng)
+  - 5 .NET Web API
+  - 1 YARP Gateway
+- Cấu hình `.env` cho tất cả connection strings và secrets
+- Viết `README.md` hướng dẫn clone và chạy dự án bằng 1 lệnh `docker compose up`
+- Đảm bảo health check cho từng service
+
+---
+
+## 🗂️ Tổng hợp
+
+### Database
+
+| Service | DB | Bảng chính |
+|---|---|---|
+| IdentityService | identity_db | users, refresh_tokens |
+| PaperService | paper_db | papers, authors, keywords, journals, paper_authors, paper_keywords, sync_jobs |
+| TrendService | trend_db | trend_snapshots, journal_trend_snapshots, search_history, report_cache |
+| UserService | user_db | user_profiles, bookmarks, follows, notifications, email_queue |
+| AdminService | admin_db | api_sources, system_settings, audit_logs |
+
+### Giao tiếp giữa các Service
+
+| Từ | → Đến | Mục đích | Khi nào |
+|---|---|---|---|
+| YARP Gateway | IdentityService | Xác thực JWT | Mọi request có Bearer token |
+| PaperService | UserService | Trigger notification bài mới | Sau mỗi lần sync thành công |
+| PaperService | TrendService | Gửi search_history | Sau mỗi lần user search |
+| TrendService | PaperService | Lấy data tính trend | Khi tính snapshot |
+| UserService | IdentityService | Validate user tồn tại | Khi tạo profile mới |
+| AdminService | IdentityService | Quản lý user (khoá/mở) | Khi admin thao tác |
+| AdminService | PaperService | Xem sync job logs | Khi admin xem dashboard |
+
+### Checklist Functional Requirements
+
+| Yêu cầu đề | Service xử lý | Trạng thái |
+|---|---|---|
+| User authentication & authorization | P1 | ✅ |
+| Google OAuth login | P1 | ✅ |
+| Search papers by keyword/author/journal | P2 | ✅ |
+| View paper details | P2 | ✅ |
+| Track publication trends | P3 | ✅ |
+| Display charts & dashboard | P3 | ✅ |
+| View trending research topics | P3 | ✅ |
+| Save bookmarks | P4 | ✅ |
+| Follow journals/topics | P4 | ✅ |
+| Receive notifications | P4 | ✅ |
+| Generate analytical reports | P3 | ✅ |
+| Export report (CSV/Excel) | P3 | ✅ |
+| Search history tracking | P2 | ✅ |
+| Sync data from external APIs | P2 | ✅ |
+| Manage users & system config (Admin) | P5 | ✅ |
