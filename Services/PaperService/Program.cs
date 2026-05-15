@@ -10,6 +10,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
+builder.Services.AddScoped<PaperService.Services.IPaperService, PaperService.Services.PaperServiceImpl>();
+
 // Configure Npgsql DataSource to map enums
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
 dataSourceBuilder.MapEnum<PaperSource>("paper_source");

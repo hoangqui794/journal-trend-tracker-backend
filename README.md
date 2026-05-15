@@ -101,3 +101,22 @@ Mở Solution `.sln` bằng Visual Studio và cấu hình **Multiple Startup Pro
 ```bash
 dotnet run
 ```
+
+
+
+
+
+### 2. Paper Service (P2) - Quản lý & Đồng bộ Bài báo khoa học
+
+**Database:** `paper_db`  
+**Vai trò:** Cung cấp tính năng tìm kiếm, truy xuất thông tin bài báo, từ khóa, tác giả, tạp chí. Tích hợp Background Worker tự động đồng bộ dữ liệu từ OpenAlex/SemanticScholar.
+
+| Method | Endpoint | Mô tả chức năng |
+| :--- | :--- | :--- |
+| **GET** | `/api/papers` | Tìm kiếm bài báo có phân trang (Filter: `keyword`, `year`, `journalId`, `authorId`, `source`) |
+| **GET** | `/api/papers/{id}` | Xem chi tiết 1 bài báo (JOIN với thông tin tác giả, từ khóa, tạp chí) |
+| **GET** | `/api/papers/keywords` | Lấy danh sách từ khóa gợi ý (Dùng cho dropdown / autocomplete) |
+| **GET** | `/api/papers/journals` | Lấy danh sách tạp chí (Dùng cho dropdown / autocomplete) |
+| **GET** | `/api/papers/authors` | Lấy danh sách tác giả (Dùng cho dropdown / autocomplete) |
+| **POST** | `/api/papers/search-history` | *(Internal)* Lưu lại lịch sử tìm kiếm của người dùng sau mỗi lượt search |
+| **GET** | `/api/papers/sync-jobs` | *(Internal - Admin)* Lấy danh sách lịch sử các đợt chạy ngầm đồng bộ dữ liệu API |
