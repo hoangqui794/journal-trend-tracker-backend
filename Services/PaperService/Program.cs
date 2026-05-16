@@ -12,6 +12,19 @@ builder.Services.AddControllers();
 
 builder.Services.AddScoped<PaperService.Services.IPaperService, PaperService.Services.PaperServiceImpl>();
 
+// Register HTTP Clients
+builder.Services.AddHttpClient<PaperService.Clients.ITrendServiceClient, PaperService.Clients.TrendServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:TrendService"] ?? "http://localhost:5003");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
+builder.Services.AddHttpClient<PaperService.Clients.IUserServiceClient, PaperService.Clients.UserServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:UserService"] ?? "http://localhost:5004");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
 // Configure Npgsql DataSource to map enums
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
 dataSourceBuilder.MapEnum<PaperSource>("paper_source");
