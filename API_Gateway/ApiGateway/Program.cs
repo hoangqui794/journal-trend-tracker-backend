@@ -1,42 +1,27 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services.AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Gateway (Main)");
+    
+    // Gom 5 anh em siêu nhân về đây
+    c.SwaggerEndpoint("/identity-api/swagger/v1/swagger.json", "1. Identity Service");
+    c.SwaggerEndpoint("/paper-api/swagger/v1/swagger.json", "2. Paper Service");
+    c.SwaggerEndpoint("/trend-api/swagger/v1/swagger.json", "3. Trend Service");
+    c.SwaggerEndpoint("/user-api/swagger/v1/swagger.json", "4. User Service");
+    c.SwaggerEndpoint("/admin-api/swagger/v1/swagger.json", "5. Admin Service");
 
-app.UseHttpsRedirection();
+    c.RoutePrefix = "swagger";
+});
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
+app.MapReverseProxy();
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

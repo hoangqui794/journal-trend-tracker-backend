@@ -1,45 +1,61 @@
-using AIChatService.Data;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using TrendService.DBContext;
+using TrendService.Repositories;
+using TrendService.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ── Database ──────────────────────────────────────────────────
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+builder.Services.AddDbContext<TrendDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// ── HTTP Client → PaperService ────────────────────────────────
+builder.Services.AddHttpClient<IPaperServiceClient, PaperServiceClient>(client =>
+{
+    var paperServiceUrl = builder.Configuration["ServiceUrls:PaperService"]
+        ?? "http://localhost:5002";
+    client.BaseAddress = new Uri(paperServiceUrl);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+
+// ── Dependency Injection ──────────────────────────────────────
+builder.Services.AddScoped<ITrendRepository, TrendRepository>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IExportService, ExportService>();
+
+// ── Swagger + Controllers ─────────────────────────────────────
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Configure Database (Dynamic: Npgsql for Docker/Production, InMemory for Local Test)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (!string.IsNullOrEmpty(connectionString) && connectionString != "Host=localhost;Database=aichat_db;Username=THQ;Password=a")
+builder.Services.AddSwaggerGen(c =>
 {
-    builder.Services.AddDbContext<AIChatDbContext>(options =>
-        options.UseNpgsql(connectionString));
-}
-else
-{
-    builder.Services.AddDbContext<AIChatDbContext>(options =>
-        options.UseInMemoryDatabase("ChatDbTest"));
-}
+    c.SwaggerDoc("v1", new() { Title = "TrendService API", Version = "v1" });
+});
 
-// Add HttpClient for AI API calls
-builder.Services.AddHttpClient();
-builder.Services.AddScoped<AIChatService.Services.IGeminiService, AIChatService.Services.GeminiService>();
-builder.Services.AddScoped<AIChatService.Repositories.IChatRepository, AIChatService.Repositories.ChatRepository>();
-builder.Services.AddScoped<AIChatService.Services.IChatService, AIChatService.Services.ChatService>();
+// ── CORS ──────────────────────────────────────────────────────
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowGateway", policy =>
+        policy.WithOrigins(
+                builder.Configuration["ServiceUrls:Gateway"] ?? "http://localhost:5000")
+              .AllowAnyHeader()
+              .AllowAnyMethod());
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// ── Middleware Pipeline ───────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowGateway");
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();
