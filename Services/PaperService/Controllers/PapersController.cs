@@ -68,5 +68,39 @@ namespace PaperService.Controllers
             var keywords = await _paperService.GetKeywordSuggestionsAsync(query, limit);
             return Ok(keywords);
         }
+
+        /// <summary>
+        /// Lấy danh sách tạp chí gợi ý
+        /// </summary>
+        [HttpGet("journals")]
+        public async Task<ActionResult<IEnumerable<JournalSuggestionDto>>> GetJournals([FromQuery] string? query, [FromQuery] int limit = 20)
+        {
+            var journals = await _paperService.GetJournalSuggestionsAsync(query, limit);
+            return Ok(journals);
+        }
+
+        /// <summary>
+        /// Lấy danh sách tác giả gợi ý
+        /// </summary>
+        [HttpGet("authors")]
+        public async Task<ActionResult<IEnumerable<AuthorSuggestionDto>>> GetAuthors([FromQuery] string? query, [FromQuery] int limit = 20)
+        {
+            var authors = await _paperService.GetAuthorSuggestionsAsync(query, limit);
+            return Ok(authors);
+        }
+
+        [HttpGet("authors/count")]
+        public async Task<ActionResult<AuthorCountDto>> GetAuthorsCount()
+        {
+            var total = await _paperService.GetAuthorsCountAsync();
+            return Ok(new AuthorCountDto { Total = total });
+        }
+
+        [HttpGet("authors/top")]
+        public async Task<ActionResult<IEnumerable<AuthorTopDto>>> GetTopAuthors([FromQuery] int top = 10)
+        {
+            var authors = await _paperService.GetTopAuthorsAsync(top);
+            return Ok(authors);
+        }
     }
 }
