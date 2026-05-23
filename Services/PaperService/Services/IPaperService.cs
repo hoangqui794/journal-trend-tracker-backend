@@ -11,5 +11,6 @@ namespace PaperService.Services
         Task<IEnumerable<AuthorSuggestionDto>> GetAuthorSuggestionsAsync(string? query, int limit = 20);
         Task<int> GetAuthorsCountAsync();
         Task<IEnumerable<AuthorTopDto>> GetTopAuthorsAsync(int top = 10);
+        Task<IEnumerable<ApiSyncJobDto>> GetSyncJobsAsync(int limit = 50);
     }
 }

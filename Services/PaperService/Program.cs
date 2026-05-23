@@ -11,6 +11,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
 builder.Services.AddScoped<PaperService.Services.IPaperService, PaperService.Services.PaperServiceImpl>();
+builder.Services.AddHostedService<PaperService.Services.PaperSyncWorker>();
 
 // Register HTTP Clients
 builder.Services.AddHttpClient<PaperService.Clients.ITrendServiceClient, PaperService.Clients.TrendServiceClient>(client =>
