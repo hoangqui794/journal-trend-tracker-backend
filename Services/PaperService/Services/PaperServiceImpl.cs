@@ -148,5 +148,70 @@ namespace PaperService.Services
                 })
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<JournalSuggestionDto>> GetJournalSuggestionsAsync(string? query, int limit = 20)
+        {
+            var q = _context.Journals.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var kw = query.ToLower();
+                q = q.Where(j => j.Name.ToLower().Contains(kw));
+            }
+
+            return await q.OrderBy(j => j.Name)
+                .Take(limit)
+                .Select(j => new JournalSuggestionDto
+                {
+                    Id = j.Id,
+                    Name = j.Name
+                })
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<AuthorSuggestionDto>> GetAuthorSuggestionsAsync(string? query, int limit = 20)
+        {
+            var q = _context.Authors.AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var kw = query.ToLower();
+                q = q.Where(a => a.Name.ToLower().Contains(kw));
+            }
+
+            return await q.OrderBy(a => a.Name)
+                .Take(limit)
+                .Select(a => new AuthorSuggestionDto
+                {
+                    Id = a.Id,
+                    Name = a.Name,
+                    Affiliation = a.Affiliation
+                })
+                .ToListAsync();
+        }
+
+        public async Task<int> GetAuthorsCountAsync()
+        {
+            return await _context.Authors.CountAsync();
+        }
+
+        public async Task<IEnumerable<AuthorTopDto>> GetTopAuthorsAsync(int top = 10)
+        {
+            top = Math.Clamp(top, 1, 100);
+
+            return await _context.Authors
+                .Select(a => new AuthorTopDto
+                {
+                    AuthorId = a.Id,
+                    Name = a.Name,
+                    Affiliation = a.Affiliation,
+                    PaperCount = a.PaperAuthors.Count
+                })
+                .Where(a => a.PaperCount > 0)
+                .OrderByDescending(a => a.PaperCount)
+                .ThenBy(a => a.Name)
+                .Take(top)
+                .ToListAsync();
+        }
     }
 }
