@@ -60,6 +60,16 @@ namespace PaperService.Controllers
         }
 
         /// <summary>
+        /// Lưu lịch sử tìm kiếm của user
+        /// </summary>
+        [HttpPost("search-history")]
+        public async Task<IActionResult> LogSearchHistory([FromBody] SearchHistoryLogDto dto)
+        {
+            await _trendServiceClient.LogSearchHistoryAsync(dto);
+            return Ok(new { message = "Search history logged successfully." });
+        }
+
+        /// <summary>
         /// Lấy danh sách từ khóa gợi ý
         /// </summary>
         [HttpGet("keywords")]
@@ -87,6 +97,16 @@ namespace PaperService.Controllers
         {
             var authors = await _paperService.GetAuthorSuggestionsAsync(query, limit);
             return Ok(authors);
+        }
+
+        /// <summary>
+        /// Lấy danh sách lịch sử đồng bộ chạy ngầm (Dành cho AdminService gọi)
+        /// </summary>
+        [HttpGet("sync-jobs")]
+        public async Task<ActionResult<IEnumerable<ApiSyncJobDto>>> GetSyncJobs([FromQuery] int limit = 50)
+        {
+            var jobs = await _paperService.GetSyncJobsAsync(limit);
+            return Ok(jobs);
         }
 
         [HttpGet("authors/count")]

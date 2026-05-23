@@ -213,5 +213,31 @@ namespace PaperService.Services
                 .Take(top)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<ApiSyncJobDto>> GetSyncJobsAsync(int limit = 50)
+        {
+            limit = Math.Clamp(limit, 1, 500);
+
+            return await _context.ApiSyncJobs
+                .OrderByDescending(j => j.CreatedAt)
+                .Take(limit)
+                .Select(j => new ApiSyncJobDto
+                {
+                    Id = j.Id,
+                    SourceName = j.SourceName,
+                    SourceBaseUrl = j.SourceBaseUrl,
+                    QueryParams = j.QueryParams,
+                    ScheduledAt = j.ScheduledAt,
+                    StartedAt = j.StartedAt,
+                    FinishedAt = j.FinishedAt,
+                    Status = j.Status.ToString(),
+                    PapersFetched = j.PapersFetched,
+                    PapersInserted = j.PapersInserted,
+                    PapersUpdated = j.PapersUpdated,
+                    ErrorMessage = j.ErrorMessage,
+                    CreatedAt = j.CreatedAt
+                })
+                .ToListAsync();
+        }
     }
 }

@@ -1,7 +1,9 @@
+using PaperService.DTOs;
+
 namespace PaperService.Clients
 {
     public interface IUserServiceClient
     {
-        // TODO: Add methods for UserService
+        Task TriggerNotificationAsync(NotificationTriggerDto dto);
     }
 }
