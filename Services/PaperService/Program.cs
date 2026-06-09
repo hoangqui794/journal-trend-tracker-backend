@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using PaperService.Data;
 using PaperService.Entities;
+using DotNetEnv;
+
+Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,7 +30,7 @@ builder.Services.AddHttpClient<PaperService.Clients.IUserServiceClient, PaperSer
 });
 
 // Configure Npgsql DataSource to map enums
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("DefaultConnection"));
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("PaperConnection"));
 dataSourceBuilder.MapEnum<PaperSource>("paper_source");
 dataSourceBuilder.MapEnum<KeywordSource>("keyword_source");
 dataSourceBuilder.MapEnum<SyncStatus>("sync_status");

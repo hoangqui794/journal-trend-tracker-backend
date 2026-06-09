@@ -1,13 +1,16 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TrendService.DBContext;
 using TrendService.Repositories;
 using TrendService.Services;
+using DotNetEnv;
+
+Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Database ──────────────────────────────────────────────────
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+var connectionString = builder.Configuration.GetConnectionString("TrendConnection")
+    ?? throw new InvalidOperationException("Connection string 'TrendConnection' not found.");
 
 builder.Services.AddDbContext<TrendDbContext>(options =>
     options.UseNpgsql(connectionString));

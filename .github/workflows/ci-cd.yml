@@ -1,0 +1,81 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "dev" ]
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore --configuration Release
+
+    # TODO: Uncomment this step once you have added Test projects (e.g. xUnit, NUnit)
+    # - name: Run Tests
+    #   run: dotnet test --no-build --verbosity normal --configuration Release
+
+  deploy-to-render:
+    name: Deploy to Render
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    # Tự động trigger chỉ khi commit/push thẳng lên nhánh main hoặc có PR merge vào main
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Trigger Render Deploy Hooks
+      run: |
+        echo "🚀 Triggering Deployments on Render..."
+        
+        # Identity Service
+        if [ ! -z "${{ secrets.RENDER_DEPLOY_HOOK_IDENTITY }}" ]; then
+          echo "Triggering Identity Service..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_IDENTITY }}"
+        fi
+
+        # Admin Service
+        if [ ! -z "${{ secrets.RENDER_DEPLOY_HOOK_ADMIN }}" ]; then
+          echo "Triggering Admin Service..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_ADMIN }}"
+        fi
+
+        # Paper Service
+        if [ ! -z "${{ secrets.RENDER_DEPLOY_HOOK_PAPER }}" ]; then
+          echo "Triggering Paper Service..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_PAPER }}"
+        fi
+
+        # Trend Service
+        if [ ! -z "${{ secrets.RENDER_DEPLOY_HOOK_TREND }}" ]; then
+          echo "Triggering Trend Service..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_TREND }}"
+        fi
+
+        # User Service
+        if [ ! -z "${{ secrets.RENDER_DEPLOY_HOOK_USER }}" ]; then
+          echo "Triggering User Service..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_USER }}"
+        fi
+
+        # API Gateway
+        if [ ! -z "${{ secrets.RENDER_DEPLOY_HOOK_GATEWAY }}" ]; then
+          echo "Triggering API Gateway..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_GATEWAY }}"
+        fi
+        
+        echo "✅ All Render Deploy Hooks Triggered Successfully."

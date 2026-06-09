@@ -4,6 +4,9 @@ using UserService.Data;
 using UserService.Repositories;
 using UserService.Services;
 using Microsoft.EntityFrameworkCore;
+using DotNetEnv;
+
+Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +18,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 // builder.Services.AddDbContext<DocumentDbContext>(options =>
 //     options.UseNpgsql(connectionString));
 
-var userConnectionString = builder.Configuration.GetConnectionString("UserConnection");
+var userConnectionString = builder.Configuration.GetConnectionString("StorageConnection");
 
 // Register PostgreSQL ENUM types at the DataSource level (required by Npgsql)
 var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(userConnectionString);
