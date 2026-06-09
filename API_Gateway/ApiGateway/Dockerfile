@@ -2,16 +2,16 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY ["AdminService.csproj", "./"]
-RUN dotnet restore "./AdminService.csproj"
+COPY ["ApiGateway.csproj", "./"]
+RUN dotnet restore "./ApiGateway.csproj"
 
 COPY . .
 WORKDIR "/src/"
 
-RUN dotnet build "AdminService.csproj" -c Release -o /app/build
+RUN dotnet build "ApiGateway.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "AdminService.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "ApiGateway.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Bước 2: Môi trường Runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
@@ -21,4 +21,4 @@ EXPOSE 8080
 
 COPY --from=publish /app/publish .
 
-ENTRYPOINT ["dotnet", "AdminService.dll"]
+ENTRYPOINT ["dotnet", "ApiGateway.dll"]

@@ -63,6 +63,8 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 app.UseSwagger();
@@ -89,4 +91,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapReverseProxy();
+app.MapHealthChecks("/health");
+
 app.Run();

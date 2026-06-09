@@ -47,6 +47,8 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // ── Middleware Pipeline ───────────────────────────────────────
@@ -60,5 +62,7 @@ app.UseCors("AllowGateway");
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.Run();

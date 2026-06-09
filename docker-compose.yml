@@ -1,48 +1,56 @@
+version: '3.8'
+
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: jts_postgres
-    environment:
-      POSTGRES_USER: THQ
-      POSTGRES_PASSWORD: a
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      # Mount the sql scripts to a subfolder so postgres doesn't auto-run them blindly
-      - ../db-scripts:/docker-entrypoint-initdb.d/scripts
-      # Mount our custom shell script directly to initdb.d to execute the scripts correctly
-      - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/00_init_dbs.sh
-    restart: always
-
-  aichat_service:
-    image: aichat_service
+  apigateway:
     build:
-      context: .
-      dockerfile: Services/AIChatService/Dockerfile
-    container_name: jts_aichat_service
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=aichat_db;Username=THQ;Password=a
-      - Gemini__ApiKey=AIzaSyCRoD1oDXZMXrl5qXKtslnNtzlkUKfEieU
-      - Gemini__Model=gemini-3.1-flash-lite-preview
+      context: ./API_Gateway/ApiGateway
+      dockerfile: Dockerfile
     ports:
-      - "8084:8080"
-    depends_on:
-      - postgres
-    restart: always
+      - "8000:8080"
+    env_file:
+      - .env
 
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: jts_pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@jts.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+  identityservice:
+    build:
+      context: ./Services/IdentityService
+      dockerfile: Dockerfile
     ports:
-      - "5050:80"
-    depends_on:
-      - postgres
-    restart: always
+      - "8001:8080"
+    env_file:
+      - .env
 
-volumes:
-  pgdata:
+  adminservice:
+    build:
+      context: ./Services/AdminService
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8080"
+    env_file:
+      - .env
+
+  paperservice:
+    build:
+      context: ./Services/PaperService
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8080"
+    env_file:
+      - .env
+
+  trendservice:
+    build:
+      context: ./Services/TrendService
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8080"
+    env_file:
+      - .env
+
+  userservice:
+    build:
+      context: ./Services/UserService
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8080"
+    env_file:
+      - .env

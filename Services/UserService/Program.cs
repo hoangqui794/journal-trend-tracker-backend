@@ -44,6 +44,8 @@ builder.Services.AddHttpClient<IIdentityClient, IdentityClient>(client =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(UserService.Configurations.SwaggerConfig.Configure);
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -59,5 +61,7 @@ app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 // app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.Run();

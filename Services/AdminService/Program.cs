@@ -32,6 +32,8 @@ builder.Services.AddHttpClient("paper", client =>
     client.BaseAddress = new Uri(baseUrl);
 });
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -42,5 +44,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.Run();

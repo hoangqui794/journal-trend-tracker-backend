@@ -40,6 +40,8 @@ var dataSource = dataSourceBuilder.Build();
 builder.Services.AddDbContext<PaperDbContext>(options =>
     options.UseNpgsql(dataSource));
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -52,5 +54,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health");
 
 app.Run();
