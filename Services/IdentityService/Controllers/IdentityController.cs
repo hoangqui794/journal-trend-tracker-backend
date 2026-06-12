@@ -105,6 +105,13 @@ namespace IdentityService.Controllers
             return Ok(new { AccessToken = result.Value.AccessToken, RefreshToken = result.Value.RefreshToken });
         }
 
+        [HttpGet("users")]
+        public async Task<IActionResult> GetUsers()
+        {
+            var users = await _authService.GetAllUsersAsync();
+            return Ok(users);
+        }
+
         [HttpGet("users/{id}")]
         public async Task<IActionResult> GetUser(Guid id)
         {

@@ -2,6 +2,7 @@ using IdentityService.Data;
 using IdentityService.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace IdentityService.Repositories
@@ -13,6 +14,11 @@ namespace IdentityService.Repositories
         public UserRepository(IdentityDbContext context)
         {
             _context = context;
+        }
+
+        public async Task<IEnumerable<User>> GetAllAsync()
+        {
+            return await _context.Users.ToListAsync();
         }
 
         public async Task<User?> GetByIdAsync(Guid id)
