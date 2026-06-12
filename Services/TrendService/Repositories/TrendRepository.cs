@@ -83,9 +83,11 @@ public class TrendRepository : ITrendRepository
 
     public async Task<TrendOverviewDto> GetOverviewAsync()
     {
-        var totalPapers = await _context.TrendSnapshots
+        var maxPapersPerKeyword = await _context.TrendSnapshots
             .GroupBy(s => s.KeywordId)
-            .SumAsync(g => g.Max(s => s.PaperCount));
+            .Select(g => g.Max(s => s.PaperCount))
+            .ToListAsync();
+        var totalPapers = maxPapersPerKeyword.Sum();
 
         var totalKeywords = await _context.TrendSnapshots
             .Select(s => s.KeywordId)
