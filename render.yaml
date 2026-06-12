@@ -17,6 +17,10 @@ envVarGroups:
         value: http://identity-service:8080
       - key: Services__PaperBaseUrl
         value: http://paper-service:8080
+      - key: PORT
+        value: 8080
+      - key: ASPNETCORE_HTTP_PORTS
+        value: 8080
 
 services:
   - type: web
