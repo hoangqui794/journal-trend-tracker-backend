@@ -25,8 +25,8 @@ services:
     dockerContext: ./API_Gateway/ApiGateway
     dockerfilePath: ./API_Gateway/ApiGateway/Dockerfile
     plan: free
-    envVarGroups:
-      - backend-env
+    envVars:
+      - fromGroup: backend-env
 
   - type: web
     name: identity-service
@@ -34,8 +34,8 @@ services:
     dockerContext: ./Services/IdentityService
     dockerfilePath: ./Services/IdentityService/Dockerfile
     plan: free
-    envVarGroups:
-      - backend-env
+    envVars:
+      - fromGroup: backend-env
 
   - type: web
     name: admin-service
@@ -43,8 +43,8 @@ services:
     dockerContext: ./Services/AdminService
     dockerfilePath: ./Services/AdminService/Dockerfile
     plan: free
-    envVarGroups:
-      - backend-env
+    envVars:
+      - fromGroup: backend-env
 
   - type: web
     name: paper-service
@@ -52,8 +52,8 @@ services:
     dockerContext: ./Services/PaperService
     dockerfilePath: ./Services/PaperService/Dockerfile
     plan: free
-    envVarGroups:
-      - backend-env
+    envVars:
+      - fromGroup: backend-env
 
   - type: web
     name: trend-service
@@ -61,8 +61,8 @@ services:
     dockerContext: ./Services/TrendService
     dockerfilePath: ./Services/TrendService/Dockerfile
     plan: free
-    envVarGroups:
-      - backend-env
+    envVars:
+      - fromGroup: backend-env
 
   - type: web
     name: user-service
@@ -70,5 +70,5 @@ services:
     dockerContext: ./Services/UserService
     dockerfilePath: ./Services/UserService/Dockerfile
     plan: free
-    envVarGroups:
-      - backend-env
+    envVars:
+      - fromGroup: backend-env
