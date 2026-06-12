@@ -11,10 +11,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Configure Entity Framework Core with PostgreSQL
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-// builder.Services.AddDbContext<DocumentDbContext>(options =>
-//     options.UseNpgsql(connectionString));
-
 var userConnectionString = builder.Configuration.GetConnectionString("UserConnection");
 
 // Register PostgreSQL ENUM types at the DataSource level (required by Npgsql)
