@@ -76,14 +76,12 @@ builder.Services.AddAuthentication(x =>
 var app = builder.Build();
 
 // ── Middleware Pipeline ───────────────────────────────────────
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Enable Swagger in production
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseCors("AllowGateway");
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
