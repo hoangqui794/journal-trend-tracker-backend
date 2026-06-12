@@ -19,7 +19,7 @@ namespace IdentityService.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterModel model)
         {
-            var result = await _authService.RegisterAsync(model.FullName, model.Email, model.Password, model.Role);
+            var result = await _authService.RegisterAsync(model.FullName, model.Email, model.Password, "student");
             if (!result) return BadRequest("Email already exists");
             return Ok("User registered successfully");
         }
@@ -85,7 +85,6 @@ namespace IdentityService.Controllers
         public string FullName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
-        public string Role { get; set; } = "student";
     }
 
     public class LoginModel
