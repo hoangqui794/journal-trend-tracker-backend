@@ -1,6 +1,6 @@
 version: "1"
 
-envGroups:
+envVarGroups:
   - name: backend-env
     envVars:
       - key: ConnectionStrings__AdminConnection
@@ -25,7 +25,7 @@ services:
     dockerContext: ./API_Gateway/ApiGateway
     dockerfilePath: ./API_Gateway/ApiGateway/Dockerfile
     plan: free
-    envGroups:
+    envVarGroups:
       - backend-env
 
   - type: web
@@ -34,7 +34,7 @@ services:
     dockerContext: ./Services/IdentityService
     dockerfilePath: ./Services/IdentityService/Dockerfile
     plan: free
-    envGroups:
+    envVarGroups:
       - backend-env
 
   - type: web
@@ -43,7 +43,7 @@ services:
     dockerContext: ./Services/AdminService
     dockerfilePath: ./Services/AdminService/Dockerfile
     plan: free
-    envGroups:
+    envVarGroups:
       - backend-env
 
   - type: web
@@ -52,7 +52,7 @@ services:
     dockerContext: ./Services/PaperService
     dockerfilePath: ./Services/PaperService/Dockerfile
     plan: free
-    envGroups:
+    envVarGroups:
       - backend-env
 
   - type: web
@@ -61,7 +61,7 @@ services:
     dockerContext: ./Services/TrendService
     dockerfilePath: ./Services/TrendService/Dockerfile
     plan: free
-    envGroups:
+    envVarGroups:
       - backend-env
 
   - type: web
@@ -70,5 +70,5 @@ services:
     dockerContext: ./Services/UserService
     dockerfilePath: ./Services/UserService/Dockerfile
     plan: free
-    envGroups:
+    envVarGroups:
       - backend-env
