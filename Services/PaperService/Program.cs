@@ -46,7 +46,16 @@ var app = builder.Build();
 
 // Configure the HTTP request pipeline.
 // Enable Swagger in production
-app.UseSwagger();
+app.UseSwagger(c =>
+{
+    c.PreSerializeFilters.Add((swagger, httpReq) =>
+    {
+        swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
+        {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = "/paper-api" }
+        };
+    });
+});
 app.UseSwaggerUI();
 
 // app.UseHttpsRedirection();
