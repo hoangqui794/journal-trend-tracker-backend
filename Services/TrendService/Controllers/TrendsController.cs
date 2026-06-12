@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using TrendService.DTOs;
 using TrendService.Services;
 
@@ -11,15 +12,28 @@ public class TrendsController : ControllerBase
     private readonly IAnalyticsService _service;
     private readonly IExportService _exportService;
     private readonly ILogger<TrendsController> _logger;
+    private readonly IConfiguration _configuration;
 
     public TrendsController(
         IAnalyticsService service,
         IExportService exportService,
-        ILogger<TrendsController> logger)
+        ILogger<TrendsController> logger,
+        IConfiguration configuration)
     {
         _service = service;
         _exportService = exportService;
         _logger = logger;
+        _configuration = configuration;
+    }
+
+    private bool IsInternalRequestValid()
+    {
+        var expectedSecret = _configuration["InternalSecret"] ?? "default_internal_secret_key_123";
+        if (Request.Headers.TryGetValue("X-Internal-Secret", out var providedSecret))
+        {
+            return providedSecret == expectedSecret;
+        }
+        return false;
     }
 
     // GET /api/trends/overview
@@ -92,6 +106,7 @@ public class TrendsController : ControllerBase
 
     // GET /api/trends/reports/export?keywordId=xxx
     [HttpGet("reports/export")]
+    [Authorize]
     public async Task<IActionResult> ExportExcel([FromQuery] Guid keywordId)
     {
         if (keywordId == Guid.Empty)
@@ -116,6 +131,9 @@ public class TrendsController : ControllerBase
     [HttpPost("search-history")]
     public async Task<IActionResult> LogSearchHistory([FromBody] SearchHistoryLogDto dto)
     {
+        if (!IsInternalRequestValid())
+            return StatusCode(403, "Forbidden: Invalid Internal Secret");
+
         if (string.IsNullOrWhiteSpace(dto.Query))
             return BadRequest("Query không được để trống.");
         await _service.LogSearchHistoryAsync(dto);
@@ -127,6 +145,9 @@ public class TrendsController : ControllerBase
     [HttpPost("snapshots/recalculate")]
     public async Task<IActionResult> RecalculateSnapshot([FromBody] RecalculateSnapshotDto dto)
     {
+        if (!IsInternalRequestValid())
+            return StatusCode(403, "Forbidden: Invalid Internal Secret");
+
         if (dto.KeywordId == Guid.Empty)
             return BadRequest("KeywordId không hợp lệ.");
         await _service.RecalculateSnapshotAsync(dto);
