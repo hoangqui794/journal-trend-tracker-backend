@@ -1,4 +1,4 @@
-version: "1"
+
 
 envVarGroups:
   - name: backend-env
