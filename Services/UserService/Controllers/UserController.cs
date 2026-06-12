@@ -34,8 +34,15 @@ namespace UserService.Controllers
         public async Task<IActionResult> UpdateProfile([FromBody] UserProfileUpdateDto dto)
         {
             var userId = GetUserIdFromHeader();
-            await _userService.UpdateProfileAsync(userId, dto);
-            return NoContent();
+            try
+            {
+                await _userService.UpdateProfileAsync(userId, dto);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         // ── BOOKMARKS ─────────────────────────────────────────
