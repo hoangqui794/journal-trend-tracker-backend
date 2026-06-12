@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using TrendService.DBContext;
 using TrendService.Repositories;
 using TrendService.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using DotNetEnv;
 
 Env.TraversePath().Load();
@@ -49,6 +52,27 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddHealthChecks();
 
+// ── Authentication ──────────────────────────────────────────────
+var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"] ?? "default_secret_key_that_is_long_enough_32_bytes");
+builder.Services.AddAuthentication(x =>
+{
+    x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(x =>
+{
+    x.RequireHttpsMetadata = false;
+    x.SaveToken = true;
+    x.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
 var app = builder.Build();
 
 // ── Middleware Pipeline ───────────────────────────────────────
@@ -60,6 +84,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowGateway");
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
