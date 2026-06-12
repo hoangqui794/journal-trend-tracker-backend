@@ -108,8 +108,16 @@ namespace IdentityService.Controllers
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers()
         {
-            var users = await _authService.GetAllUsersAsync();
-            return Ok(users);
+            try
+            {
+                var users = await _authService.GetAllUsersAsync();
+                var json = System.Text.Json.JsonSerializer.Serialize(users);
+                return Content(json, "application/json");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message, stackTrace = ex.StackTrace, innerException = ex.InnerException?.Message });
+            }
         }
 
         [HttpGet("users/{id}")]
