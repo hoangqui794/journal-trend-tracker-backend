@@ -19,7 +19,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // DB Context
-var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("SupabaseConnection"));
+var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("AuthConnection"));
 dataSourceBuilder.MapEnum<AuthProvider>();
 dataSourceBuilder.MapEnum<UserRole>();
 dataSourceBuilder.MapEnum<UserStatus>();
