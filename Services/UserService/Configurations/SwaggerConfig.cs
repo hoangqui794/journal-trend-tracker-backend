@@ -1,3 +1,4 @@
+using Microsoft.OpenApi.Any;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -16,6 +17,14 @@ namespace UserService.Configurations
                 Version = "v1",
                 Description = "API quản lý User Profile, Bookmarks, Follows và Notifications"
             });
+
+            // Load XML documentation comments
+            var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+            if (File.Exists(xmlPath))
+            {
+                c.IncludeXmlComments(xmlPath);
+            }
 
             // Định nghĩa X-User-Id như một API Key header (Authorize)
             c.AddSecurityDefinition("X-User-Id", new OpenApiSecurityScheme
@@ -41,6 +50,29 @@ namespace UserService.Configurations
                     Array.Empty<string>()
                 }
             });
+
+            // Hỗ trợ Nullable Reference Types và set giá trị Example cho các thuộc tính nullable thành null
+            c.SupportNonNullableReferenceTypes();
+            c.SchemaFilter<NullableExampleSchemaFilter>();
+        }
+    }
+
+    /// <summary>
+    /// Schema Filter để tự động chuyển giá trị Example của các thuộc tính nullable thành null trong Swagger UI
+    /// </summary>
+    public class NullableExampleSchemaFilter : ISchemaFilter
+    {
+        public void Apply(OpenApiSchema schema, SchemaFilterContext context)
+        {
+            if (schema.Properties == null) return;
+
+            foreach (var property in schema.Properties)
+            {
+                if (property.Value.Nullable)
+                {
+                    property.Value.Example = new OpenApiNull();
+                }
+            }
         }
     }
 }

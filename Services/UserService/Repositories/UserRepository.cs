@@ -32,10 +32,10 @@ namespace UserService.Repositories
             }
             else
             {
-                existing.Bio = profile.Bio;
-                existing.Institution = profile.Institution;
-                existing.ResearchFields = profile.ResearchFields;
-                existing.WebsiteUrl = profile.WebsiteUrl;
+                if (profile.Bio != null) existing.Bio = profile.Bio;
+                if (profile.Institution != null) existing.Institution = profile.Institution;
+                if (profile.ResearchFields != null) existing.ResearchFields = profile.ResearchFields;
+                if (profile.WebsiteUrl != null) existing.WebsiteUrl = profile.WebsiteUrl;
                 // updated_at is handled by DB trigger, but set here too for EF tracking
                 existing.UpdatedAt = DateTime.UtcNow;
             }

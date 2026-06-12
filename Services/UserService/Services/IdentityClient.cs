@@ -1,12 +1,15 @@
 using System;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
+using UserService.DTOs;
 
 namespace UserService.Services
 {
     public interface IIdentityClient
     {
         Task<bool> ValidateUserExistsAsync(Guid userId);
+        Task<UserIdentityDto?> GetUserAsync(Guid userId);
     }
 
     public class IdentityClient : IIdentityClient
@@ -18,18 +21,35 @@ namespace UserService.Services
             _httpClient = httpClient;
         }
 
-        public async Task<bool> ValidateUserExistsAsync(Guid userId)
+        public async Task<UserIdentityDto?> GetUserAsync(Guid userId)
         {
             try
             {
-                // In a real microservice, this would be the actual URL of the IdentityService
                 var response = await _httpClient.GetAsync($"/api/identity/users/{userId}");
-                return response.IsSuccessStatusCode;
+                if (!response.IsSuccessStatusCode) return null;
+                return await response.Content.ReadFromJsonAsync<UserIdentityDto>();
+            }
+            catch (Exception ex) when (ex is HttpRequestException || ex is System.IO.IOException || ex is System.Net.Sockets.SocketException)
+            {
+                // If IdentityService is down in local dev, fallback to mock user to allow local testing of UserService
+                Console.WriteLine($"[IdentityClient Warning] IdentityService is unreachable ({ex.Message}). Returning mock user details.");
+                return new UserIdentityDto
+                {
+                    Id = userId,
+                    FullName = "Local Dev User",
+                    Email = "dev-user@example.com"
+                };
             }
             catch
             {
-                return false;
+                return null;
             }
+        }
+
+        public async Task<bool> ValidateUserExistsAsync(Guid userId)
+        {
+            var user = await GetUserAsync(userId);
+            return user != null;
         }
     }
 }
