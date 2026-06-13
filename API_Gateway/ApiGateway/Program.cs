@@ -62,6 +62,9 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddHealthChecks();
 
+// Thêm dịch vụ tự động gọi các service khác để tránh sleep trên Render
+builder.Services.AddHttpClient();
+builder.Services.AddHostedService<ApiGateway.KeepAliveService>();
 var app = builder.Build();
 
 app.UseSwagger();
