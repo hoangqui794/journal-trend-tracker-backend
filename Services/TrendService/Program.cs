@@ -22,7 +22,7 @@ builder.Services.AddDbContext<TrendDbContext>(options =>
 // ── HTTP Client → PaperService ────────────────────────────────
 builder.Services.AddHttpClient<IPaperServiceClient, PaperServiceClient>(client =>
 {
-    var paperServiceUrl = builder.Configuration["ServiceUrls:PaperService"]
+    var paperServiceUrl = builder.Configuration["Services:PaperBaseUrl"] ?? builder.Configuration["ServiceUrls:PaperService"]
         ?? "http://localhost:5002";
     client.BaseAddress = new Uri(paperServiceUrl);
     client.Timeout = TimeSpan.FromSeconds(10);
