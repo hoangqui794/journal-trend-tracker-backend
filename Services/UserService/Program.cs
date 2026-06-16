@@ -14,11 +14,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 
 // Configure Entity Framework Core with PostgreSQL
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-// builder.Services.AddDbContext<DocumentDbContext>(options =>
-//     options.UseNpgsql(connectionString));
-
-var userConnectionString = builder.Configuration.GetConnectionString("StorageConnection");
+var userConnectionString = builder.Configuration.GetConnectionString("UserConnection");
 
 // Register PostgreSQL ENUM types at the DataSource level (required by Npgsql)
 var dataSourceBuilder = new Npgsql.NpgsqlDataSourceBuilder(userConnectionString);
@@ -49,11 +45,18 @@ builder.Services.AddHealthChecks();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Enable Swagger in production
+app.UseSwagger(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.PreSerializeFilters.Add((swagger, httpReq) =>
+    {
+        swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
+        {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = "/user-api" }
+        };
+    });
+});
+app.UseSwaggerUI();
 
 // Redirect root → Swagger UI tự động
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
@@ -63,5 +66,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/users/health");
 
 app.Run();

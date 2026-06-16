@@ -36,15 +36,23 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Enable Swagger in production
+app.UseSwagger(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.PreSerializeFilters.Add((swagger, httpReq) =>
+    {
+        swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
+        {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = "/admin-api" }
+        };
+    });
+});
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.MapControllers();
 
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/admin/health");
 
 app.Run();

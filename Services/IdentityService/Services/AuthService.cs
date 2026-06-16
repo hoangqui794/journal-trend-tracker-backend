@@ -3,6 +3,7 @@ using Google.Apis.Auth;
 using IdentityService.Models;
 using IdentityService.Repositories;
 using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -117,7 +118,12 @@ namespace IdentityService.Services
         {
             try
             {
-                var payload = await GoogleJsonWebSignature.ValidateAsync(idToken);
+                var validationSettings = new GoogleJsonWebSignature.ValidationSettings
+                {
+                    IssuedAtClockTolerance = TimeSpan.FromMinutes(5),
+                    ExpirationTimeClockTolerance = TimeSpan.FromMinutes(5)
+                };
+                var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, validationSettings);
                 var email = payload.Email;
 
                 var user = await _userRepository.GetByEmailAsync(email);
@@ -157,10 +163,16 @@ namespace IdentityService.Services
 
                 return (accessToken, refreshTokenValue);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Console.WriteLine($"[GoogleLogin] Verification failed: {ex}");
                 return null;
             }
+        }
+
+        public async Task<IEnumerable<User>> GetAllUsersAsync()
+        {
+            return await _userRepository.GetAllAsync();
         }
 
         public async Task<User?> GetUserByIdAsync(Guid id)

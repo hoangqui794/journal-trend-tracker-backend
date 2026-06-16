@@ -11,10 +11,12 @@ namespace UserService.Services
     public class UserAppService : IUserAppService
     {
         private readonly IUserRepository _repository;
+        private readonly IIdentityClient _identityClient;
 
-        public UserAppService(IUserRepository repository)
+        public UserAppService(IUserRepository repository, IIdentityClient identityClient)
         {
             _repository = repository;
+            _identityClient = identityClient;
         }
 
         // ── PROFILES ─────────────────────────────────────────
@@ -27,6 +29,12 @@ namespace UserService.Services
 
         public async Task UpdateProfileAsync(Guid userId, UserProfileUpdateDto dto)
         {
+            var userExists = await _identityClient.ValidateUserExistsAsync(userId);
+            if (!userExists)
+            {
+                throw new ArgumentException($"User with ID {userId} does not exist in IdentityService.");
+            }
+
             var profile = new UserProfile
             {
                 UserId = userId,
@@ -180,14 +188,16 @@ namespace UserService.Services
                 }
 
                 // 2. Queue email (if notify_email = true)
-                // Note: to_email must be fetched from IdentityService in production
                 if (follow.NotifyEmail)
                 {
+                    var user = await _identityClient.GetUserAsync(follow.UserId);
+                    var toEmail = user?.Email ?? $"user-{follow.UserId}@placeholder.com";
+
                     var email = new EmailQueue
                     {
                         Id = Guid.NewGuid(),
                         UserId = follow.UserId,
-                        ToEmail = $"user-{follow.UserId}@placeholder.com", // TODO: fetch from IdentityService
+                        ToEmail = toEmail,
                         Subject = trigger.Title,
                         BodyHtml = $"<p>{trigger.Body}</p>",
                         Status = DeliveryStatus.pending,

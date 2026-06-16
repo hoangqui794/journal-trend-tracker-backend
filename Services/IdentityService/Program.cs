@@ -62,13 +62,20 @@ builder.Services.AddHealthChecks();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Enable Swagger in production
+app.UseSwagger(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.PreSerializeFilters.Add((swagger, httpReq) =>
+    {
+        swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
+        {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = "/identity-api" }
+        };
+    });
+});
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -76,5 +83,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/identity/health");
 
 app.Run();
