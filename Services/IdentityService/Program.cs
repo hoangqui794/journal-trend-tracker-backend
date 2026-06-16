@@ -83,5 +83,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/identity/health");
 
 app.Run();

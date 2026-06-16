@@ -53,5 +53,6 @@ app.UseSwaggerUI();
 app.MapControllers();
 
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/admin/health");
 
 app.Run();

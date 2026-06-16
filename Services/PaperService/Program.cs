@@ -63,5 +63,6 @@ app.UseSwaggerUI();
 app.MapControllers();
 
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/papers/health");
 
 app.Run();

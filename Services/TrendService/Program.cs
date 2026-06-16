@@ -96,5 +96,6 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/trends/health");
 
 app.Run();
