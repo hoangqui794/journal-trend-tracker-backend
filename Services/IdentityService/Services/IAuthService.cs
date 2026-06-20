@@ -15,5 +15,6 @@ namespace IdentityService.Services
         Task<IEnumerable<User>> GetAllUsersAsync();
         Task<User?> GetUserByIdAsync(Guid id);
         Task<bool> UpdateUserStatusAsync(Guid id, string status);
+        Task<bool> UpdateUserDetailsAsync(Guid id, string fullName, string email);
     }
 }

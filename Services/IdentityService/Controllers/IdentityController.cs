@@ -135,6 +135,14 @@ namespace IdentityService.Controllers
             if (!result) return NotFound();
             return Ok("User status updated");
         }
+
+        [HttpPut("users/{id}")]
+        public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserModel model)
+        {
+            var result = await _authService.UpdateUserDetailsAsync(id, model.FullName, model.Email);
+            if (!result) return NotFound();
+            return Ok("User details updated successfully");
+        }
     }
 
     public class RegisterModel
@@ -164,5 +172,11 @@ namespace IdentityService.Controllers
     public class UpdateStatusModel
     {
         public string Status { get; set; } = string.Empty;
+    }
+
+    public class UpdateUserModel
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
 }

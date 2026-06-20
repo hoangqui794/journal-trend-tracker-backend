@@ -190,5 +190,17 @@ namespace IdentityService.Services
             await _userRepository.UpdateAsync(user);
             return true;
         }
+
+        public async Task<bool> UpdateUserDetailsAsync(Guid id, string fullName, string email)
+        {
+            var user = await _userRepository.GetByIdAsync(id);
+            if (user == null) return false;
+
+            if (!string.IsNullOrEmpty(fullName)) user.FullName = fullName;
+            if (!string.IsNullOrEmpty(email)) user.Email = email;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _userRepository.UpdateAsync(user);
+            return true;
+        }
     }
 }

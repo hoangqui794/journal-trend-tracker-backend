@@ -156,10 +156,77 @@ namespace UserService.Controllers
         // ── HELPER ────────────────────────────────────────────
         private Guid GetUserIdFromHeader()
         {
+            // 1. Try to get from X-User-Id header
             if (Request.Headers.TryGetValue("X-User-Id", out var value) && Guid.TryParse(value, out var userId))
                 return userId;
 
-            throw new UnauthorizedAccessException("Missing or invalid X-User-Id header");
+            // 2. Try to get from Authorization Bearer token
+            if (Request.Headers.TryGetValue("Authorization", out var authHeaderValue))
+            {
+                var authHeader = authHeaderValue.ToString();
+                if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var token = authHeader.Substring(7).Trim();
+                    try
+                    {
+                        var payloadJson = DecodeJwtPayload(token);
+                        if (!string.IsNullOrEmpty(payloadJson))
+                        {
+                            using var doc = System.Text.Json.JsonDocument.Parse(payloadJson);
+                            var root = doc.RootElement;
+                            
+                            string? userIdStr = null;
+                            if (root.TryGetProperty("sub", out var subProp))
+                            {
+                                userIdStr = subProp.GetString();
+                            }
+                            else if (root.TryGetProperty("nameid", out var nameidProp))
+                            {
+                                userIdStr = nameidProp.GetString();
+                            }
+                            else if (root.TryGetProperty("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier", out var soapProp))
+                            {
+                                userIdStr = soapProp.GetString();
+                            }
+
+                            if (userIdStr != null && Guid.TryParse(userIdStr, out var parsedUserId))
+                            {
+                                return parsedUserId;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[JWT Decode Error] {ex.Message}");
+                    }
+                }
+            }
+
+            throw new UnauthorizedAccessException("Missing or invalid X-User-Id or Authorization header");
+        }
+
+        private static string? DecodeJwtPayload(string token)
+        {
+            var parts = token.Split('.');
+            if (parts.Length < 2) return null;
+
+            var payload = parts[1];
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4)
+            {
+                case 2: payload += "=="; break;
+                case 3: payload += "="; break;
+            }
+
+            try
+            {
+                var bytes = Convert.FromBase64String(payload);
+                return System.Text.Encoding.UTF8.GetString(bytes);
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

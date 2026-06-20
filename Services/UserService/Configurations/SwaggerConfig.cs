@@ -26,13 +26,15 @@ namespace UserService.Configurations
                 c.IncludeXmlComments(xmlPath);
             }
 
-            // Định nghĩa X-User-Id như một API Key header (Authorize)
-            c.AddSecurityDefinition("X-User-Id", new OpenApiSecurityScheme
+            // Định nghĩa Bearer Token (JWT)
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                Name = "X-User-Id",
+                Name = "Authorization",
                 In = ParameterLocation.Header,
-                Type = SecuritySchemeType.ApiKey,
-                Description = "Nhập UUID của user để test. Ví dụ: 00000000-0000-0000-0000-000000000001"
+                Type = SecuritySchemeType.Http,
+                Scheme = "Bearer",
+                BearerFormat = "JWT",
+                Description = "Nhập AccessToken (JWT) thu được từ Identity Service."
             });
 
             // Áp dụng cho tất cả các endpoint
@@ -44,7 +46,7 @@ namespace UserService.Configurations
                         Reference = new OpenApiReference
                         {
                             Type = ReferenceType.SecurityScheme,
-                            Id = "X-User-Id"
+                            Id = "Bearer"
                         }
                     },
                     Array.Empty<string>()

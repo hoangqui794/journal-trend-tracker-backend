@@ -34,7 +34,15 @@ builder.Services.AddScoped<IUserAppService, UserAppService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 builder.Services.AddHttpClient<IIdentityClient, IdentityClient>(client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["Services:IdentityService"] ?? "http://identity-service");
+    var identityUrl = builder.Configuration["Services:IdentityService"] 
+                   ?? builder.Configuration["Services:IdentityBaseUrl"] 
+                   ?? "http://identity-service";
+    client.BaseAddress = new Uri(identityUrl);
+})
+.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+{
+    // Bypasses SSL certificate verification for localhost testing to prevent SSL handshake errors
+    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -52,6 +60,7 @@ app.UseSwagger(c =>
     {
         swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
         {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host}" },
             new Microsoft.OpenApi.Models.OpenApiServer { Url = "/user-api" }
         };
     });

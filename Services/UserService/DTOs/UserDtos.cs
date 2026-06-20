@@ -17,6 +17,8 @@ namespace UserService.DTOs
 
     public class UserProfileUpdateDto
     {
+        public string? FullName { get; set; }
+        public string? Email { get; set; }
         public string? Bio { get; set; }// tieu sư
         public string? Institution { get; set; } // to chuc
         public string[]? ResearchFields { get; set; }
