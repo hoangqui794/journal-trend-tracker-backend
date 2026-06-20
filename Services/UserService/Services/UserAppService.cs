@@ -24,7 +24,25 @@ namespace UserService.Services
         {
             var profile = await _repository.GetProfileAsync(userId);
             if (profile == null) return null;
-            return MapToProfileDto(profile);
+            
+            var dto = MapToProfileDto(profile);
+            
+            try
+            {
+                var identity = await _identityClient.GetUserAsync(userId);
+                if (identity != null)
+                {
+                    dto.FullName = identity.FullName;
+                    dto.Email = identity.Email;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log exception but return the profile anyway to prevent total failure if IdentityService has issues
+                Console.WriteLine($"[UserAppService Warning] Failed to fetch identity details for user {userId}: {ex.Message}");
+            }
+            
+            return dto;
         }
 
         public async Task UpdateProfileAsync(Guid userId, UserProfileUpdateDto dto)
