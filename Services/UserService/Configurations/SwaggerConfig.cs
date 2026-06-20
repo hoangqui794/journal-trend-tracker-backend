@@ -35,6 +35,17 @@ namespace UserService.Configurations
                 Description = "Nhập UUID của user để test. Ví dụ: 00000000-0000-0000-0000-000000000001"
             });
 
+            // Định nghĩa Bearer Token (JWT)
+            c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.Http,
+                Scheme = "Bearer",
+                BearerFormat = "JWT",
+                Description = "Nhập AccessToken (JWT) thu được từ Identity Service."
+            });
+
             // Áp dụng cho tất cả các endpoint
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
             {
@@ -45,6 +56,17 @@ namespace UserService.Configurations
                         {
                             Type = ReferenceType.SecurityScheme,
                             Id = "X-User-Id"
+                        }
+                    },
+                    Array.Empty<string>()
+                },
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "Bearer"
                         }
                     },
                     Array.Empty<string>()
