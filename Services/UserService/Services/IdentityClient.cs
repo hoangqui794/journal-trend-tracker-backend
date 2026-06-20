@@ -10,6 +10,7 @@ namespace UserService.Services
     {
         Task<bool> ValidateUserExistsAsync(Guid userId);
         Task<UserIdentityDto?> GetUserAsync(Guid userId);
+        Task<bool> UpdateUserAsync(Guid userId, string fullName, string email);
     }
 
     public class IdentityClient : IIdentityClient
@@ -50,6 +51,20 @@ namespace UserService.Services
         {
             var user = await GetUserAsync(userId);
             return user != null;
+        }
+
+        public async Task<bool> UpdateUserAsync(Guid userId, string fullName, string email)
+        {
+            try
+            {
+                var response = await _httpClient.PutAsJsonAsync($"/api/identity/users/{userId}", new { FullName = fullName, Email = email });
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IdentityClient Error] Failed to update user in IdentityService: {ex.Message}");
+                return false;
+            }
         }
     }
 }

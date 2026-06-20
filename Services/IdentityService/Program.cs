@@ -69,6 +69,7 @@ app.UseSwagger(c =>
     {
         swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
         {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host}" },
             new Microsoft.OpenApi.Models.OpenApiServer { Url = "/identity-api" }
         };
     });

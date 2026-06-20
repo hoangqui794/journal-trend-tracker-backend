@@ -53,6 +53,16 @@ namespace UserService.Services
                 throw new ArgumentException($"User with ID {userId} does not exist in IdentityService.");
             }
 
+            // Forward FullName and Email updates to IdentityService if they are provided
+            if (!string.IsNullOrEmpty(dto.FullName) || !string.IsNullOrEmpty(dto.Email))
+            {
+                var updateSuccess = await _identityClient.UpdateUserAsync(userId, dto.FullName ?? "", dto.Email ?? "");
+                if (!updateSuccess)
+                {
+                    Console.WriteLine($"[UserAppService Warning] Failed to update user details (FullName/Email) in IdentityService for user {userId}");
+                }
+            }
+
             var profile = new UserProfile
             {
                 UserId = userId,
