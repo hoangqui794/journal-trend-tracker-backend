@@ -7,6 +7,8 @@ namespace UserService.DTOs
     public class UserProfileDto
     {
         public Guid UserId { get; set; }
+        public string? FullName { get; set; }
+        public string? Email { get; set; }
         public string? Bio { get; set; }
         public string? Institution { get; set; }
         public string[]? ResearchFields { get; set; }
