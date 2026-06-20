@@ -29,8 +29,15 @@ public sealed class AdminController(IAdminManagementService adminManagementServi
     [HttpGet("api-sources")]
     public async Task<IActionResult> GetApiSources()
     {
-        var data = await adminManagementService.GetApiSourcesAsync();
-        return Ok(data);
+        try
+        {
+            var data = await adminManagementService.GetApiSourcesAsync();
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message, stackTrace = ex.StackTrace, innerException = ex.InnerException?.Message });
+        }
     }
 
     [HttpPut("api-sources/{id:guid}/toggle")]

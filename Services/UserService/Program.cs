@@ -4,6 +4,9 @@ using UserService.Data;
 using UserService.Repositories;
 using UserService.Services;
 using Microsoft.EntityFrameworkCore;
+using DotNetEnv;
+
+Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,14 +40,23 @@ builder.Services.AddHttpClient<IIdentityClient, IdentityClient>(client =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(UserService.Configurations.SwaggerConfig.Configure);
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+// Enable Swagger in production
+app.UseSwagger(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.PreSerializeFilters.Add((swagger, httpReq) =>
+    {
+        swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
+        {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = "/user-api" }
+        };
+    });
+});
+app.UseSwaggerUI();
 
 // Redirect root → Swagger UI tự động
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
@@ -52,5 +64,8 @@ app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 // app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/users/health");
 
 app.Run();

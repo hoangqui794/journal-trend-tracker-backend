@@ -1,0 +1,78 @@
+
+
+envVarGroups:
+  - name: backend-env
+    envVars:
+      - key: ConnectionStrings__AdminConnection
+        sync: false
+      - key: ConnectionStrings__TrendConnection
+        sync: false
+      - key: ConnectionStrings__PaperConnection
+        sync: false
+      - key: ConnectionStrings__UserConnection
+        sync: false
+      - key: ConnectionStrings__AuthConnection
+        sync: false
+      - key: Services__IdentityBaseUrl
+        value: http://identity-service:8080
+      - key: Services__PaperBaseUrl
+        value: http://paper-service:8080
+      - key: PORT
+        value: 8080
+      - key: ASPNETCORE_HTTP_PORTS
+        value: 8080
+
+services:
+  - type: web
+    name: api-gateway
+    env: docker
+    dockerContext: ./API_Gateway/ApiGateway
+    dockerfilePath: ./API_Gateway/ApiGateway/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: backend-env
+
+  - type: web
+    name: identity-service
+    env: docker
+    dockerContext: ./Services/IdentityService
+    dockerfilePath: ./Services/IdentityService/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: backend-env
+
+  - type: web
+    name: admin-service
+    env: docker
+    dockerContext: ./Services/AdminService
+    dockerfilePath: ./Services/AdminService/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: backend-env
+
+  - type: web
+    name: paper-service
+    env: docker
+    dockerContext: ./Services/PaperService
+    dockerfilePath: ./Services/PaperService/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: backend-env
+
+  - type: web
+    name: trend-service
+    env: docker
+    dockerContext: ./Services/TrendService
+    dockerfilePath: ./Services/TrendService/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: backend-env
+
+  - type: web
+    name: user-service
+    env: docker
+    dockerContext: ./Services/UserService
+    dockerfilePath: ./Services/UserService/Dockerfile
+    plan: free
+    envVars:
+      - fromGroup: backend-env

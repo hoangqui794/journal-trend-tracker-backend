@@ -4,6 +4,9 @@ using AdminService.Repositories.Interfaces;
 using AdminService.Services.Implementations;
 using AdminService.Services.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using DotNetEnv;
+
+Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +15,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<AdminDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("AdminConnection")));
 
 builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 builder.Services.AddScoped<IAdminManagementService, AdminManagementService>();
@@ -29,15 +32,27 @@ builder.Services.AddHttpClient("paper", client =>
     client.BaseAddress = new Uri(baseUrl);
 });
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// Enable Swagger in production
+app.UseSwagger(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.PreSerializeFilters.Add((swagger, httpReq) =>
+    {
+        swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
+        {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = "/admin-api" }
+        };
+    });
+});
+app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.MapControllers();
+
+app.MapHealthChecks("/health");
+app.MapHealthChecks("/api/admin/health");
 
 app.Run();
