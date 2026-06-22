@@ -9,10 +9,15 @@ namespace PaperService.Clients
         private readonly HttpClient _httpClient;
         private readonly ILogger<TrendServiceClient> _logger;
 
-        public TrendServiceClient(HttpClient httpClient, ILogger<TrendServiceClient> logger)
+        public TrendServiceClient(HttpClient httpClient, ILogger<TrendServiceClient> logger, IConfiguration configuration)
         {
             _httpClient = httpClient;
             _logger = logger;
+            var secret = configuration["InternalSecret"] ?? "default_internal_secret_key_123";
+            if (!_httpClient.DefaultRequestHeaders.Contains("X-Internal-Secret"))
+            {
+                _httpClient.DefaultRequestHeaders.Add("X-Internal-Secret", secret);
+            }
         }
 
         public async Task LogSearchHistoryAsync(SearchHistoryLogDto dto)
