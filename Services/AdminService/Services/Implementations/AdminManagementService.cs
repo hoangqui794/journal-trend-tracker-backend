@@ -209,6 +209,11 @@ public sealed class AdminManagementService(
             {
                 return statusValue.GetString() ?? "active";
             }
+            if (doc.RootElement.TryGetProperty("Status", out var statusValuePascal) &&
+                statusValuePascal.ValueKind == JsonValueKind.String)
+            {
+                return statusValuePascal.GetString() ?? "active";
+            }
         }
         catch
         {
