@@ -19,6 +19,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddControllers();
 
 builder.Services.AddScoped<PaperService.Services.IPaperService, PaperService.Services.PaperServiceImpl>();
+builder.Services.AddScoped<PaperService.Services.ISyncJobService, PaperService.Services.SyncJobServiceImpl>();
 builder.Services.AddHostedService<PaperService.Services.PaperSyncWorker>();
 
 // Register HTTP Clients
