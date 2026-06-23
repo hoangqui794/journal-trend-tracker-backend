@@ -1,11 +1,13 @@
 using AdminService.Models.Dtos;
 using AdminService.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AdminService.Controllers;
 
 [ApiController]
 [Route("api/admin")]
+[Authorize(Roles = "admin")]
 public sealed class AdminController(IAdminManagementService adminManagementService) : ControllerBase
 {
     [HttpGet("users")]
@@ -87,6 +89,14 @@ public sealed class AdminController(IAdminManagementService adminManagementServi
 
     private Guid GetAdminUserId()
     {
+        // 1. Try to read from claims (JWT token validated at microservice level)
+        var claimId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(claimId, out var idFromClaim))
+        {
+            return idFromClaim;
+        }
+
+        // 2. Fallback to header
         var value = Request.Headers["X-Admin-User-Id"].FirstOrDefault();
         return Guid.TryParse(value, out var id) ? id : Guid.Empty;
     }

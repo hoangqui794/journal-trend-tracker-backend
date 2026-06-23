@@ -14,9 +14,23 @@ envVarGroups:
       - key: ConnectionStrings__AuthConnection
         sync: false
       - key: Services__IdentityBaseUrl
-        value: http://identity-service:8080
+        value: https://identity-service-6r7e.onrender.com
+      - key: Services__IdentityService
+        value: https://identity-service-6r7e.onrender.com
       - key: Services__PaperBaseUrl
-        value: http://paper-service:8080
+        value: https://paper-service-ynmc.onrender.com
+      - key: ServiceUrls__PaperService
+        value: https://paper-service-ynmc.onrender.com
+      - key: ServiceUrls__TrendService
+        value: https://trend-service-ab5q.onrender.com
+      - key: ServiceUrls__UserService
+        value: https://user-service-rje9.onrender.com
+      - key: Services__AdminBaseUrl
+        value: https://admin-service-y388.onrender.com
+      - key: ServiceUrls__AdminService
+        value: https://admin-service-y388.onrender.com
+      - key: ServiceUrls__Gateway
+        value: https://api-gateway-999k.onrender.com
       - key: PORT
         value: 8080
       - key: ASPNETCORE_HTTP_PORTS
