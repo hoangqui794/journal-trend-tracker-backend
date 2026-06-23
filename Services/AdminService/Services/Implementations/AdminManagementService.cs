@@ -119,6 +119,50 @@ public sealed class AdminManagementService(
         }
     }
 
+    public async Task<ProxyResponse> TriggerSyncAsync(Guid adminUserId, string? ipAddress)
+    {
+        try
+        {
+            var response = await httpClientFactory.CreateClient("paper").PostAsync("/api/papers/sync/trigger", null);
+            repository.AddAuditLog(new AuditLog
+            {
+                AdminUserId = adminUserId,
+                Action = "TRIGGER_MANUAL_SYNC",
+                EntityType = "SyncJob",
+                IpAddress = ipAddress,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await repository.SaveChangesAsync();
+            return await ProxyResponse.FromHttpResponseAsync(response);
+        }
+        catch (HttpRequestException ex)
+        {
+            return ServiceUnavailable("PaperService", ex);
+        }
+    }
+
+    public async Task<ProxyResponse> WipeMockDataAsync(Guid adminUserId, string? ipAddress)
+    {
+        try
+        {
+            var response = await httpClientFactory.CreateClient("paper").DeleteAsync("/api/papers/sync/wipe");
+            repository.AddAuditLog(new AuditLog
+            {
+                AdminUserId = adminUserId,
+                Action = "WIPE_MOCK_DATA",
+                EntityType = "Database",
+                IpAddress = ipAddress,
+                CreatedAt = DateTimeOffset.UtcNow
+            });
+            await repository.SaveChangesAsync();
+            return await ProxyResponse.FromHttpResponseAsync(response);
+        }
+        catch (HttpRequestException ex)
+        {
+            return ServiceUnavailable("PaperService", ex);
+        }
+    }
+
     public async Task<IReadOnlyList<SystemSetting>> GetSettingsAsync()
     {
         return await repository.GetSystemSettingsAsync();
@@ -208,6 +252,11 @@ public sealed class AdminManagementService(
                 statusValue.ValueKind == JsonValueKind.String)
             {
                 return statusValue.GetString() ?? "active";
+            }
+            if (doc.RootElement.TryGetProperty("Status", out var statusValuePascal) &&
+                statusValuePascal.ValueKind == JsonValueKind.String)
+            {
+                return statusValuePascal.GetString() ?? "active";
             }
         }
         catch

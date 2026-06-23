@@ -62,6 +62,26 @@ public sealed class AdminController(IAdminManagementService adminManagementServi
         return ToContentResult(response);
     }
 
+    [HttpPost("sync-jobs/trigger")]
+    public async Task<IActionResult> TriggerSyncJob()
+    {
+        var response = await adminManagementService.TriggerSyncAsync(
+            GetAdminUserId(),
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+            
+        return ToContentResult(response);
+    }
+
+    [HttpDelete("papers/wipe-mock")]
+    public async Task<IActionResult> WipeMockData()
+    {
+        var response = await adminManagementService.WipeMockDataAsync(
+            GetAdminUserId(),
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+            
+        return ToContentResult(response);
+    }
+
     [HttpGet("settings")]
     public async Task<IActionResult> GetSettings()
     {

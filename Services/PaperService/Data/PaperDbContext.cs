@@ -24,9 +24,9 @@ namespace PaperService.Data
             base.OnModelCreating(modelBuilder);
 
             // Configure Postgres Enums
-            modelBuilder.HasPostgresEnum<PaperSource>("paper_source");
-            modelBuilder.HasPostgresEnum<KeywordSource>("keyword_source");
-            modelBuilder.HasPostgresEnum<SyncStatus>("sync_status");
+            modelBuilder.HasPostgresEnum<PaperSource>();
+            modelBuilder.HasPostgresEnum<KeywordSource>();
+            modelBuilder.HasPostgresEnum<SyncStatus>();
 
             // Configure Many-to-Many for Paper <-> Author
             modelBuilder.Entity<PaperAuthor>()
