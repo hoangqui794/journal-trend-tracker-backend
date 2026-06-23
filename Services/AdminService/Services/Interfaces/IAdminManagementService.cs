@@ -13,4 +13,6 @@ public interface IAdminManagementService
     Task<IReadOnlyList<SystemSetting>> GetSettingsAsync();
     Task UpdateSettingsAsync(IEnumerable<UpdateSystemSettingRequest> requests, Guid adminUserId, string? ipAddress);
     Task<IReadOnlyList<AuditLog>> GetLogsAsync(int limit);
+    Task<ProxyResponse> TriggerSyncAsync(Guid adminUserId, string? ipAddress);
+    Task<ProxyResponse> WipeMockDataAsync(Guid adminUserId, string? ipAddress);
 }
