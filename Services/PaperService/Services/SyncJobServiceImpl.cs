@@ -72,7 +72,7 @@ namespace PaperService.Services
 
                 // Create a dedicated HTTP client with polite UA for OpenAlex
                 using var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("User-Agent", "mailto:admin@jts.com");
+                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "JournalTrendTracker/1.0 (mailto:admin@jts.com)");
                 client.Timeout = TimeSpan.FromSeconds(30);
 
                 var keywordsUpdated = new HashSet<Keyword>();
@@ -84,7 +84,7 @@ namespace PaperService.Services
                     var openAlexCursor = await context.SyncCursors.FirstOrDefaultAsync(c => c.SourceName == "OpenAlex", stoppingToken);
                     string cursorValue = openAlexCursor?.LastCursor ?? "*";
 
-                    var openAlexUrl = $"https://api.openalex.org/works?filter=default_search:\"Computer Science\",publication_year:{DateTime.UtcNow.Year}&per_page=10&cursor={Uri.EscapeDataString(cursorValue)}";
+                    var openAlexUrl = $"https://api.openalex.org/works?filter=default.search:\"Computer Science\",publication_year:{DateTime.UtcNow.Year}&per_page=10&cursor={Uri.EscapeDataString(cursorValue)}";
                     
                     try
                     {
