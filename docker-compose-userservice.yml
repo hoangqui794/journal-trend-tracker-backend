@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  user_postgres:
+    image: postgres:15-alpine
+    container_name: user_postgres_container
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local_user_db_password
+      POSTGRES_DB: user_db
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+      # Tự động import schema & khởi tạo bảng/enum cho user_db từ file SQL có sẵn
+      - ./db5/04_user_db.sql:/docker-entrypoint-initdb.d/04_user_db.sql
+    ports:
+      - "5432:5432"
+    restart: always
+
+  userservice:
+    build:
+      context: ./Services/UserService
+      dockerfile: Dockerfile
+    container_name: userservice_container
+    ports:
+      - "8005:8080"
+    env_file:
+      - .env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # Ghi đè connection string từ file .env để kết nối tới Postgres local trong Docker
+      - ConnectionStrings__UserConnection=Host=user_postgres;Database=user_db;Username=postgres;Password=local_user_db_password;Port=5432
+    depends_on:
+      - user_postgres
+    restart: always
+
+volumes:
+  user_db_data:
+
+
