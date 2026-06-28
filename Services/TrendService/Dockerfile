@@ -4,7 +4,7 @@ WORKDIR /src
 
 # Copy file .csproj vào trước và restore các thư viện (để tận dụng cache của Docker)
 COPY ["TrendService.csproj", "./"]
-RUN dotnet restore "./TrendService.csproj"
+RUN dotnet restore "TrendService.csproj"
 
 # Copy toàn bộ code còn lại vào thư mục src
 COPY . .
@@ -21,7 +21,8 @@ RUN dotnet publish "TrendService.csproj" -c Release -o /app/publish /p:UseAppHos
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-# Mở cổng 8080 cho HTTP
+# Đặt biến môi trường rõ ràng cho .NET 8 để sử dụng cổng 8080 (cổng mặc định của .NET 8)
+ENV ASPNETCORE_HTTP_PORTS=8080
 EXPOSE 8080
 
 # Lấy các file đã publish từ Bước 1 sang

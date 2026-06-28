@@ -81,7 +81,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks();
 
 // ── Authentication ──────────────────────────────────────────────
-var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"] ?? "default_secret_key_that_is_long_enough_32_bytes");
+var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"] ?? "PrnTracker_SuperSecretKey_2026!@#");
 builder.Services.AddAuthentication(x =>
 {
     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -109,8 +109,11 @@ app.UseSwagger(c =>
 {
     c.PreSerializeFilters.Add((swagger, httpReq) =>
     {
+        var scheme = httpReq.Headers["X-Forwarded-Proto"].FirstOrDefault() ?? httpReq.Scheme;
+        var host = httpReq.Headers["X-Forwarded-Host"].FirstOrDefault() ?? httpReq.Host.Value;
         swagger.Servers = new List<Microsoft.OpenApi.Models.OpenApiServer>
         {
+            new Microsoft.OpenApi.Models.OpenApiServer { Url = $"{scheme}://{host}" },
             new Microsoft.OpenApi.Models.OpenApiServer { Url = "/trend-api" }
         };
     });
