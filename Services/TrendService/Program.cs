@@ -81,7 +81,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks();
 
 // ── Authentication ──────────────────────────────────────────────
-var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"] ?? "PrnTracker_SuperSecretKey_2026!@#");
+var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"] ?? "default_secret_key_that_is_long_enough_32_bytes");
 builder.Services.AddAuthentication(x =>
 {
     x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
