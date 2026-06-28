@@ -13,6 +13,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy => policy.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+});
+
 // Configure Entity Framework Core with PostgreSQL
 var userConnectionString = builder.Configuration.GetConnectionString("UserConnection");
 
@@ -73,6 +82,8 @@ app.UseSwaggerUI();
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
 
 // app.UseHttpsRedirection();
+app.UseCors("AllowAll");
+
 app.UseAuthorization();
 app.MapControllers();
 

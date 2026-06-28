@@ -71,9 +71,8 @@ builder.Services.AddSwaggerGen(c =>
 // ── CORS ──────────────────────────────────────────────────────
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowGateway", policy =>
-        policy.WithOrigins(
-                builder.Configuration["ServiceUrls:Gateway"] ?? "http://localhost:5000")
+    options.AddPolicy("AllowAll", policy =>
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
@@ -120,7 +119,7 @@ app.UseSwagger(c =>
 });
 app.UseSwaggerUI();
 
-app.UseCors("AllowGateway");
+app.UseCors("AllowAll");
 // app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

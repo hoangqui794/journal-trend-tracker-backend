@@ -18,6 +18,15 @@ builder.Services.AddSwaggerGen(c =>
 });
 builder.Services.AddControllers();
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy => policy.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+});
+
 builder.Services.AddScoped<PaperService.Services.IPaperService, PaperService.Services.PaperServiceImpl>();
 builder.Services.AddScoped<PaperService.Services.ISyncJobService, PaperService.Services.SyncJobServiceImpl>();
 builder.Services.AddHostedService<PaperService.Services.PaperSyncWorker>();
@@ -68,6 +77,8 @@ app.UseSwagger(c =>
 app.UseSwaggerUI();
 
 // app.UseHttpsRedirection();
+
+app.UseCors("AllowAll");
 
 app.MapControllers();
 

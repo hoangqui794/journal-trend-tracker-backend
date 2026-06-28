@@ -93,6 +93,15 @@ builder.Services.AddAuthentication(x =>
 
 builder.Services.AddAuthorization();
 
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        policy => policy.AllowAnyOrigin()
+                        .AllowAnyMethod()
+                        .AllowAnyHeader());
+});
+
 var app = builder.Build();
 
 // Enable Swagger in production
@@ -112,6 +121,8 @@ app.UseSwagger(c =>
 app.UseSwaggerUI();
 
 // app.UseHttpsRedirection();
+
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
