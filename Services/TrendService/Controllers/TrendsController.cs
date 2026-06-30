@@ -64,43 +64,35 @@ public class TrendsController : ControllerBase
         return Ok(result);
     }
 
-    // GET /api/trends/top-journals?top=10
+    // GET /api/trends/top-journals
     [HttpGet("top-journals")]
-    public async Task<IActionResult> GetTopJournals([FromQuery] int top = 10)
+    public async Task<IActionResult> GetTopJournals()
     {
-        if (top <= 0 || top > 100)
-            return BadRequest("top phải từ 1 đến 100.");
-        var result = await _service.GetTopJournalsAsync(top);
+        var result = await _service.GetTopJournalsAsync(5);
         return Ok(result);
     }
 
-    // GET /api/trends/top-keywords?top=10
+    // GET /api/trends/top-keywords
     [HttpGet("top-keywords")]
-    public async Task<IActionResult> GetTopKeywords([FromQuery] int top = 10)
+    public async Task<IActionResult> GetTopKeywords()
     {
-        if (top <= 0 || top > 100)
-            return BadRequest("top phải từ 1 đến 100.");
-        var result = await _service.GetTopKeywordsAsync(top);
+        var result = await _service.GetTopKeywordsAsync(5);
         return Ok(result);
     }
 
-    // GET /api/trends/top-authors?top=10
+    // GET /api/trends/top-authors
     [HttpGet("top-authors")]
-    public async Task<IActionResult> GetTopAuthors([FromQuery] int top = 10)
+    public async Task<IActionResult> GetTopAuthors()
     {
-        if (top <= 0 || top > 100)
-            return BadRequest("top phải từ 1 đến 100.");
-        var result = await _service.GetTopAuthorsAsync(top);
+        var result = await _service.GetTopAuthorsAsync(5);
         return Ok(result);
     }
 
-    // GET /api/trends/hot-topics?top=5
+    // GET /api/trends/hot-topics
     [HttpGet("hot-topics")]
-    public async Task<IActionResult> GetHotTopics([FromQuery] int top = 5)
+    public async Task<IActionResult> GetHotTopics()
     {
-        if (top <= 0 || top > 50)
-            return BadRequest("top phải từ 1 đến 50.");
-        var result = await _service.GetHotTopicsAsync(top);
+        var result = await _service.GetHotTopicsAsync(5);
         return Ok(result);
     }
 
