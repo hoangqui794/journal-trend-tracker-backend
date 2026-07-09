@@ -35,6 +35,8 @@ namespace IdentityService.Data
                 entity.Property(e => e.Role).HasColumnName("role").HasDefaultValue(UserRole.student);
                 entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue(UserStatus.active);
                 entity.Property(e => e.LastLoginAt).HasColumnName("last_login_at");
+                entity.Property(e => e.ResetToken).HasColumnName("reset_token");
+                entity.Property(e => e.ResetTokenExpiresAt).HasColumnName("reset_token_expires_at");
                 entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()");
                 entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("NOW()");
 

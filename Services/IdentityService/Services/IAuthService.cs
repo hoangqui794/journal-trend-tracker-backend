@@ -13,5 +13,12 @@ namespace IdentityService.Services
         Task<(string AccessToken, string RefreshToken)?> GoogleLoginAsync(string idToken);
         Task<User?> GetUserByIdAsync(Guid id);
         Task<bool> UpdateUserStatusAsync(Guid id, string status);
+<<<<<<< Updated upstream
+=======
+        Task<bool> UpdateUserDetailsAsync(Guid id, string fullName, string email);
+        Task<string?> ForgotPasswordAsync(string email);
+        Task<bool> VerifyResetTokenAsync(string email, string token);
+        Task<bool> ResetPasswordAsync(string email, string token, string newPassword);
+>>>>>>> Stashed changes
     }
 }

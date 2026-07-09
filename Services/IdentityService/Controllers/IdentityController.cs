@@ -120,6 +120,56 @@ namespace IdentityService.Controllers
             if (!result) return NotFound();
             return Ok("User status updated");
         }
+<<<<<<< Updated upstream
+=======
+
+        [HttpPut("users/{id}")]
+        public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserModel model)
+        {
+            var result = await _authService.UpdateUserDetailsAsync(id, model.FullName, model.Email);
+            if (!result) return NotFound();
+            return Ok("User details updated successfully");
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordModel model)
+        {
+            if (string.IsNullOrEmpty(model.Email)) return BadRequest("Email is required");
+
+            var token = await _authService.ForgotPasswordAsync(model.Email);
+            if (token == null) return BadRequest("Email not found");
+
+            return Ok(new { Message = "Reset token sent successfully", Token = token });
+        }
+
+        [HttpPost("verify-reset-token")]
+        public async Task<IActionResult> VerifyResetToken([FromBody] VerifyResetTokenModel model)
+        {
+            if (string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.Token))
+            {
+                return BadRequest("Email and Token are required");
+            }
+
+            var isValid = await _authService.VerifyResetTokenAsync(model.Email, model.Token);
+            if (!isValid) return BadRequest("Invalid or expired reset token");
+
+            return Ok(new { IsValid = true, Message = "Reset token is valid" });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordModel model)
+        {
+            if (string.IsNullOrEmpty(model.Email) || string.IsNullOrEmpty(model.Token) || string.IsNullOrEmpty(model.NewPassword))
+            {
+                return BadRequest("Email, Token, and NewPassword are required");
+            }
+
+            var success = await _authService.ResetPasswordAsync(model.Email, model.Token, model.NewPassword);
+            if (!success) return BadRequest("Invalid or expired reset token or user not found");
+
+            return Ok("Password reset successfully");
+        }
+>>>>>>> Stashed changes
     }
 
     public class RegisterModel
@@ -150,4 +200,31 @@ namespace IdentityService.Controllers
     {
         public string Status { get; set; } = string.Empty;
     }
+<<<<<<< Updated upstream
+=======
+
+    public class UpdateUserModel
+    {
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class ForgotPasswordModel
+    {
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class VerifyResetTokenModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
+    }
+
+    public class ResetPasswordModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Token { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+    }
+>>>>>>> Stashed changes
 }
