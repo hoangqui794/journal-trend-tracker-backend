@@ -187,9 +187,6 @@ namespace IdentityService.Services
             await _userRepository.UpdateAsync(user);
             return true;
         }
-<<<<<<< Updated upstream
-=======
-
         public async Task<bool> UpdateUserDetailsAsync(Guid id, string fullName, string email)
         {
             var user = await _userRepository.GetByIdAsync(id);
@@ -252,6 +249,5 @@ namespace IdentityService.Services
 
             return true;
         }
->>>>>>> Stashed changes
     }
 }

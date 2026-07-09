@@ -120,9 +120,6 @@ namespace IdentityService.Controllers
             if (!result) return NotFound();
             return Ok("User status updated");
         }
-<<<<<<< Updated upstream
-=======
-
         [HttpPut("users/{id}")]
         public async Task<IActionResult> UpdateUser(Guid id, [FromBody] UpdateUserModel model)
         {
@@ -169,7 +166,6 @@ namespace IdentityService.Controllers
 
             return Ok("Password reset successfully");
         }
->>>>>>> Stashed changes
     }
 
     public class RegisterModel
@@ -200,9 +196,6 @@ namespace IdentityService.Controllers
     {
         public string Status { get; set; } = string.Empty;
     }
-<<<<<<< Updated upstream
-=======
-
     public class UpdateUserModel
     {
         public string FullName { get; set; } = string.Empty;
@@ -226,5 +219,4 @@ namespace IdentityService.Controllers
         public string Token { get; set; } = string.Empty;
         public string NewPassword { get; set; } = string.Empty;
     }
->>>>>>> Stashed changes
 }
