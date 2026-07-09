@@ -193,10 +193,6 @@ namespace IdentityService.Services
             await _userRepository.UpdateAsync(user);
             return true;
         }
-<<<<<<< HEAD
-
-=======
->>>>>>> AuthService/Trang
         public async Task<bool> UpdateUserDetailsAsync(Guid id, string fullName, string email)
         {
             var user = await _userRepository.GetByIdAsync(id);
