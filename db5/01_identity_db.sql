@@ -21,6 +21,8 @@ CREATE TABLE users (
     role            user_role     NOT NULL DEFAULT 'student',
     status          user_status   NOT NULL DEFAULT 'active',
     last_login_at   TIMESTAMP WITH TIME ZONE,
+    reset_token     VARCHAR(512),
+    reset_token_expires_at TIMESTAMP WITH TIME ZONE,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 

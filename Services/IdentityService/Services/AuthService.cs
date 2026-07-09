@@ -2,6 +2,7 @@ using BCrypt.Net;
 using Google.Apis.Auth;
 using IdentityService.Models;
 using IdentityService.Repositories;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
@@ -14,12 +15,14 @@ namespace IdentityService.Services
         private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly ITokenService _tokenService;
+        private readonly ILogger<AuthService> _logger;
 
-        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, ITokenService tokenService)
+        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, ITokenService tokenService, ILogger<AuthService> logger)
         {
             _userRepository = userRepository;
             _refreshTokenRepository = refreshTokenRepository;
             _tokenService = tokenService;
+            _logger = logger;
         }
 
         public async Task<bool> RegisterAsync(string fullName, string email, string password, string role)
@@ -190,7 +193,10 @@ namespace IdentityService.Services
             await _userRepository.UpdateAsync(user);
             return true;
         }
+<<<<<<< HEAD
 
+=======
+>>>>>>> AuthService/Trang
         public async Task<bool> UpdateUserDetailsAsync(Guid id, string fullName, string email)
         {
             var user = await _userRepository.GetByIdAsync(id);
@@ -200,6 +206,56 @@ namespace IdentityService.Services
             if (!string.IsNullOrEmpty(email)) user.Email = email;
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user);
+            return true;
+        }
+        public async Task<string?> ForgotPasswordAsync(string email)
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user == null) return null;
+
+            var random = new Random();
+            var resetToken = random.Next(100000, 999999).ToString();
+
+            user.ResetToken = resetToken;
+            user.ResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(15);
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _userRepository.UpdateAsync(user);
+
+            _logger.LogInformation("Password reset token generated for user {Email}: {ResetToken}", email, resetToken);
+
+            return resetToken;
+        }
+
+        public async Task<bool> VerifyResetTokenAsync(string email, string token)
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user == null || user.ResetToken != token || user.ResetTokenExpiresAt == null || user.ResetTokenExpiresAt < DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public async Task<bool> ResetPasswordAsync(string email, string token, string newPassword)
+        {
+            var user = await _userRepository.GetByEmailAsync(email);
+            if (user == null || user.ResetToken != token || user.ResetTokenExpiresAt == null || user.ResetTokenExpiresAt < DateTime.UtcNow)
+            {
+                return false;
+            }
+
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.PasswordHash = passwordHash;
+            user.ResetToken = null;
+            user.ResetTokenExpiresAt = null;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _userRepository.UpdateAsync(user);
+
+            _logger.LogInformation("Password successfully reset for user {Email}", email);
+
             return true;
         }
     }

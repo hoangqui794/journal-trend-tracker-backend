@@ -18,6 +18,8 @@ namespace IdentityService.Models
         public UserRole Role { get; set; } = UserRole.student;
         public UserStatus Status { get; set; } = UserStatus.active;
         public DateTime? LastLoginAt { get; set; }
+        public string? ResetToken { get; set; }
+        public DateTime? ResetTokenExpiresAt { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
