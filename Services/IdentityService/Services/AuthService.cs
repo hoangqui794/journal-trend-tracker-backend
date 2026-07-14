@@ -15,13 +15,15 @@ namespace IdentityService.Services
         private readonly IUserRepository _userRepository;
         private readonly IRefreshTokenRepository _refreshTokenRepository;
         private readonly ITokenService _tokenService;
+        private readonly IEmailService _emailService;
         private readonly ILogger<AuthService> _logger;
 
-        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, ITokenService tokenService, ILogger<AuthService> logger)
+        public AuthService(IUserRepository userRepository, IRefreshTokenRepository refreshTokenRepository, ITokenService tokenService, IEmailService emailService, ILogger<AuthService> logger)
         {
             _userRepository = userRepository;
             _refreshTokenRepository = refreshTokenRepository;
             _tokenService = tokenService;
+            _emailService = emailService;
             _logger = logger;
         }
 
@@ -219,6 +221,26 @@ namespace IdentityService.Services
             await _userRepository.UpdateAsync(user);
 
             _logger.LogInformation("Password reset token generated for user {Email}: {ResetToken}", email, resetToken);
+
+            try
+            {
+                var subject = "Reset Password Token - Journal Trend Tracker";
+                var htmlBody = $@"
+                    <h3>Hello {user.FullName},</h3>
+                    <p>You requested to reset your password. Use the following 6-digit token to complete the process:</p>
+                    <h2 style='color:#3b82f6;letter-spacing:2px;'>{resetToken}</h2>
+                    <p>This token is valid for 15 minutes.</p>
+                    <p>If you did not request this, please ignore this email.</p>
+                    <br/>
+                    <p>Best regards,<br/>Journal Trend Tracker Team</p>";
+
+                await _emailService.SendEmailAsync(email, subject, htmlBody);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Could not send password reset email to {Email}", email);
+                throw;
+            }
 
             return resetToken;
         }
