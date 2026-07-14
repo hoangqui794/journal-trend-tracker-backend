@@ -1,4 +1,4 @@
-﻿using TrendService.DTOs;
+using TrendService.DTOs;
 using TrendService.Models;
 using TrendService.Repositories;
 
@@ -63,6 +63,44 @@ public class AnalyticsService : IAnalyticsService
         };
     }
 
+    public async Task<TopicTrendDto?> GetTopicTrendAsync(Guid id)
+    {
+        var data = await _repo.GetTopicTrendAsync(id);
+        if (data == null || !data.Any()) return null;
+
+        return new TopicTrendDto
+        {
+            TopicId = id,
+            TopicName = data[0].TopicName,
+            Stats = data.Select(d => new YearlyStatDto
+            {
+                Year = d.Year,
+                PaperCount = d.PaperCount,
+                CitationCount = d.CitationSum,
+                GrowthRate = d.GrowthRate
+            }).ToList()
+        };
+    }
+
+    public async Task<AuthorTrendDto?> GetAuthorTrendAsync(Guid id)
+    {
+        var data = await _repo.GetAuthorTrendAsync(id);
+        if (data == null || !data.Any()) return null;
+
+        return new AuthorTrendDto
+        {
+            AuthorId = id,
+            AuthorName = data[0].AuthorName,
+            Stats = data.Select(d => new YearlyStatDto
+            {
+                Year = d.Year,
+                PaperCount = d.PaperCount,
+                CitationCount = d.CitationSum,
+                GrowthRate = d.GrowthRate
+            }).ToList()
+        };
+    }
+
     public async Task<List<JournalTrendSummaryDto>> GetTopJournalsAsync(int top)
     {
         var journals = await _repo.GetTopJournalsAsync(top);
@@ -80,7 +118,7 @@ public class AnalyticsService : IAnalyticsService
         return await _repo.GetTopKeywordsAsync(top);
     }
 
-    public async Task<List<HotTopicDto>> GetHotTopicsAsync(int top)
+    public async Task<List<TopTopicDto>> GetHotTopicsAsync(int top)
     {
         return await _repo.GetHotTopicsAsync(top);
     }
@@ -119,4 +157,50 @@ public class AnalyticsService : IAnalyticsService
         };
         await _repo.UpsertSnapshotAsync(snapshot);
     }
+
+    public async Task RecalculateJournalSnapshotAsync(RecalculateJournalSnapshotDto dto)
+    {
+        var snapshot = new JournalTrendSnapshot
+        {
+            Id = Guid.NewGuid(),
+            JournalId = dto.JournalId,
+            JournalName = dto.JournalName,
+            Year = (short)dto.Year,
+            PaperCount = dto.PaperCount,
+            CitationSum = dto.CitationSum,
+            RecordedAt = DateTime.UtcNow
+        };
+        await _repo.UpsertJournalSnapshotAsync(snapshot);
+    }
+
+    public async Task RecalculateTopicSnapshotAsync(RecalculateTopicSnapshotDto dto)
+    {
+        var snapshot = new TopicTrendSnapshot
+        {
+            Id = Guid.NewGuid(),
+            TopicId = dto.TopicId,
+            TopicName = dto.TopicName,
+            Year = (short)dto.Year,
+            PaperCount = dto.PaperCount,
+            CitationSum = dto.CitationSum,
+            RecordedAt = DateTime.UtcNow
+        };
+        await _repo.UpsertTopicSnapshotAsync(snapshot);
+    }
+
+    public async Task RecalculateAuthorSnapshotAsync(RecalculateAuthorSnapshotDto dto)
+    {
+        var snapshot = new AuthorTrendSnapshot
+        {
+            Id = Guid.NewGuid(),
+            AuthorId = dto.AuthorId,
+            AuthorName = dto.AuthorName,
+            Year = (short)dto.Year,
+            PaperCount = dto.PaperCount,
+            CitationSum = dto.CitationSum,
+            RecordedAt = DateTime.UtcNow
+        };
+        await _repo.UpsertAuthorSnapshotAsync(snapshot);
+    }
+
 }

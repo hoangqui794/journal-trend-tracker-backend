@@ -1,4 +1,4 @@
-﻿namespace TrendService.DTOs;
+namespace TrendService.DTOs;
 
 public class TrendOverviewDto
 {
@@ -19,6 +19,20 @@ public class JournalTrendDto
 {
     public Guid JournalId { get; set; }
     public string JournalName { get; set; } = string.Empty;
+    public List<YearlyStatDto> Stats { get; set; } = new();
+}
+
+public class TopicTrendDto
+{
+    public Guid TopicId { get; set; }
+    public string TopicName { get; set; } = string.Empty;
+    public List<YearlyStatDto> Stats { get; set; } = new();
+}
+
+public class AuthorTrendDto
+{
+    public Guid AuthorId { get; set; }
+    public string AuthorName { get; set; } = string.Empty;
     public List<YearlyStatDto> Stats { get; set; } = new();
 }
 
@@ -44,6 +58,14 @@ public class JournalTrendSummaryDto
     public string JournalName { get; set; } = string.Empty;
     public int PaperCount { get; set; }
     public int Year { get; set; }
+}
+
+public class TopTopicDto
+{
+    public Guid TopicId { get; set; }
+    public string TopicName { get; set; } = string.Empty;
+    public int PaperCount { get; set; }
+    public double? GrowthRate { get; set; }
 }
 
 public class HotTopicDto
@@ -72,6 +94,33 @@ public class RecalculateSnapshotDto
 {
     public Guid KeywordId { get; set; }
     public string KeywordTerm { get; set; } = string.Empty;
+    public int Year { get; set; }
+    public int PaperCount { get; set; }
+    public int CitationSum { get; set; }
+}
+
+public class RecalculateJournalSnapshotDto
+{
+    public Guid JournalId { get; set; }
+    public string JournalName { get; set; } = string.Empty;
+    public int Year { get; set; }
+    public int PaperCount { get; set; }
+    public int CitationSum { get; set; }
+}
+
+public class RecalculateTopicSnapshotDto
+{
+    public Guid TopicId { get; set; }
+    public string TopicName { get; set; } = string.Empty;
+    public int Year { get; set; }
+    public int PaperCount { get; set; }
+    public int CitationSum { get; set; }
+}
+
+public class RecalculateAuthorSnapshotDto
+{
+    public Guid AuthorId { get; set; }
+    public string AuthorName { get; set; } = string.Empty;
     public int Year { get; set; }
     public int PaperCount { get; set; }
     public int CitationSum { get; set; }
