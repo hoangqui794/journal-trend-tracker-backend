@@ -49,6 +49,11 @@ namespace PaperService.Services
                 var context = scope.ServiceProvider.GetRequiredService<PaperDbContext>();
                 var userServiceClient = scope.ServiceProvider.GetRequiredService<IUserServiceClient>();
                 var trendServiceClient = scope.ServiceProvider.GetRequiredService<ITrendServiceClient>();
+                var adminServiceClient = scope.ServiceProvider.GetRequiredService<IAdminServiceClient>();
+
+                var apiSources = await adminServiceClient.GetApiSourcesAsync();
+                bool isOpenAlexActive = apiSources.FirstOrDefault(s => s.Name.Contains("OpenAlex", StringComparison.OrdinalIgnoreCase))?.IsActive ?? true;
+                bool isSemanticScholarActive = apiSources.FirstOrDefault(s => s.Name.Contains("Semantic", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Scholar", StringComparison.OrdinalIgnoreCase))?.IsActive ?? true;
 
                 // Create a new ApiSyncJob record in the database
                 var job = new ApiSyncJob
@@ -80,157 +85,179 @@ namespace PaperService.Services
                 try
                 {
                     // 1. --- OPENALEX SYNC ---
-                    _logger.LogInformation("Starting OpenAlex Sync...");
-                    var openAlexCursor = await context.SyncCursors.FirstOrDefaultAsync(c => c.SourceName == "OpenAlex", stoppingToken);
-                    string cursorValue = openAlexCursor?.LastCursor ?? "*";
-
-                    var openAlexUrl = $"https://api.openalex.org/works?filter=default.search:\"Computer Science\",publication_year:{DateTime.UtcNow.Year}&per_page=10&cursor={Uri.EscapeDataString(cursorValue)}";
-                    
-                    try
+                    if (isOpenAlexActive)
                     {
-                        var openAlexResponse = await client.GetAsync(openAlexUrl, stoppingToken);
-                        if (openAlexResponse.IsSuccessStatusCode)
-                        {
-                            var openAlexJson = await openAlexResponse.Content.ReadAsStringAsync(stoppingToken);
-                            using var doc = JsonDocument.Parse(openAlexJson);
-                            var root = doc.RootElement;
+                        _logger.LogInformation("Starting OpenAlex Sync...");
+                        var openAlexCursor = await context.SyncCursors.FirstOrDefaultAsync(c => c.SourceName == "OpenAlex", stoppingToken);
+                        string cursorValue = openAlexCursor?.LastCursor ?? "*";
 
-                            if (root.TryGetProperty("results", out var results) && results.ValueKind == JsonValueKind.Array)
+                        var openAlexUrl = $"https://api.openalex.org/works?filter=default.search:\"Computer Science\",publication_year:{DateTime.UtcNow.Year}&per_page=10&cursor={Uri.EscapeDataString(cursorValue)}";
+                        
+                        try
+                        {
+                            var openAlexResponse = await client.GetAsync(openAlexUrl, stoppingToken);
+                            if (openAlexResponse.IsSuccessStatusCode)
                             {
-                                foreach (var work in results.EnumerateArray())
+                                var openAlexJson = await openAlexResponse.Content.ReadAsStringAsync(stoppingToken);
+                                using var doc = JsonDocument.Parse(openAlexJson);
+                                var root = doc.RootElement;
+
+                                if (root.TryGetProperty("results", out var results) && results.ValueKind == JsonValueKind.Array)
                                 {
-                                    fetched++;
-                                    try
+                                    foreach (var work in results.EnumerateArray())
                                     {
-                                        var isInserted = await ProcessOpenAlexWorkAsync(context, work, keywordsUpdated, userServiceClient, stoppingToken);
-                                        if (isInserted) inserted++;
-                                        else updated++;
-                                    }
-                                    catch (Exception workEx)
-                                    {
-                                        _logger.LogError(workEx, "Error parsing OpenAlex work");
-                                        context.SyncErrors.Add(new SyncError
+                                        fetched++;
+                                        try
                                         {
-                                            Id = Guid.NewGuid(),
-                                            JobId = job.Id,
-                                            ExternalId = work.TryGetProperty("id", out var idProp) ? idProp.GetString() : "unknown",
-                                            ErrorType = "OpenAlexWorkParsing",
-                                            ErrorDetail = workEx.ToString(),
-                                            OccurredAt = DateTime.UtcNow
-                                        });
-                                        await context.SaveChangesAsync(stoppingToken);
+                                            var isInserted = await ProcessOpenAlexWorkAsync(context, work, keywordsUpdated, userServiceClient, stoppingToken);
+                                            if (isInserted) inserted++;
+                                            else updated++;
+                                        }
+                                        catch (Exception workEx)
+                                        {
+                                            _logger.LogError(workEx, "Error parsing OpenAlex work");
+                                            context.SyncErrors.Add(new SyncError
+                                            {
+                                                Id = Guid.NewGuid(),
+                                                JobId = job.Id,
+                                                ExternalId = work.TryGetProperty("id", out var idProp) ? idProp.GetString() : "unknown",
+                                                ErrorType = "OpenAlexWorkParsing",
+                                                ErrorDetail = workEx.ToString(),
+                                                OccurredAt = DateTime.UtcNow
+                                            });
+                                            await context.SaveChangesAsync(stoppingToken);
+                                        }
                                     }
+                                }
+
+                                // Save next cursor
+                                if (root.TryGetProperty("meta", out var meta) && meta.TryGetProperty("next_cursor", out var nextCursorProp))
+                                {
+                                    var nextCursor = nextCursorProp.GetString();
+                                    if (openAlexCursor == null)
+                                    {
+                                        openAlexCursor = new SyncCursor { SourceName = "OpenAlex" };
+                                        context.SyncCursors.Add(openAlexCursor);
+                                    }
+                                    openAlexCursor.LastCursor = nextCursor;
+                                    openAlexCursor.LastSyncedAt = DateTime.UtcNow;
+                                    openAlexCursor.UpdatedAt = DateTime.UtcNow;
+                                    await context.SaveChangesAsync(stoppingToken);
                                 }
                             }
-
-                            // Save next cursor
-                            if (root.TryGetProperty("meta", out var meta) && meta.TryGetProperty("next_cursor", out var nextCursorProp))
+                            else
                             {
-                                var nextCursor = nextCursorProp.GetString();
-                                if (openAlexCursor == null)
-                                {
-                                    openAlexCursor = new SyncCursor { SourceName = "OpenAlex" };
-                                    context.SyncCursors.Add(openAlexCursor);
-                                }
-                                openAlexCursor.LastCursor = nextCursor;
-                                openAlexCursor.LastSyncedAt = DateTime.UtcNow;
-                                openAlexCursor.UpdatedAt = DateTime.UtcNow;
-                                await context.SaveChangesAsync(stoppingToken);
+                                throw new HttpRequestException($"OpenAlex API returned status code {openAlexResponse.StatusCode}");
                             }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            throw new HttpRequestException($"OpenAlex API returned status code {openAlexResponse.StatusCode}");
+                            _logger.LogError(ex, "Error occurred during OpenAlex sync block.");
+                            context.SyncErrors.Add(new SyncError
+                            {
+                                Id = Guid.NewGuid(),
+                                JobId = job.Id,
+                                ErrorType = "OpenAlexSyncBlock",
+                                ErrorDetail = ex.ToString(),
+                                OccurredAt = DateTime.UtcNow
+                            });
+                            await context.SaveChangesAsync(stoppingToken);
                         }
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogError(ex, "Error occurred during OpenAlex sync block.");
-                        context.SyncErrors.Add(new SyncError
-                        {
-                            Id = Guid.NewGuid(),
-                            JobId = job.Id,
-                            ErrorType = "OpenAlexSyncBlock",
-                            ErrorDetail = ex.ToString(),
-                            OccurredAt = DateTime.UtcNow
-                        });
-                        await context.SaveChangesAsync(stoppingToken);
+                        _logger.LogInformation("OpenAlex sync is disabled via Admin settings. Skipping.");
                     }
 
                     // 2. --- SEMANTIC SCHOLAR SYNC ---
-                    _logger.LogInformation("Starting Semantic Scholar Sync...");
-                    var sScholarCursor = await context.SyncCursors.FirstOrDefaultAsync(c => c.SourceName == "SemanticScholar", stoppingToken);
-                    string offsetValue = sScholarCursor?.LastCursor ?? "0";
-                    if (!int.TryParse(offsetValue, out int offset)) offset = 0;
-
-                    var sScholarUrl = $"https://api.semanticscholar.org/graph/v1/paper/search?query=computer+science&limit=10&offset={offset}&fields=paperId,title,abstract,year,externalIds,url,citationCount,referenceCount,authors,venue,s2FieldsOfStudy";
-
-                    try
+                    if (isSemanticScholarActive)
                     {
-                        var sScholarResponse = await client.GetAsync(sScholarUrl, stoppingToken);
-                        if (sScholarResponse.IsSuccessStatusCode)
-                        {
-                            var sScholarJson = await sScholarResponse.Content.ReadAsStringAsync(stoppingToken);
-                            using var doc = JsonDocument.Parse(sScholarJson);
-                            var root = doc.RootElement;
+                        _logger.LogInformation("Starting Semantic Scholar Sync...");
+                        var sScholarCursor = await context.SyncCursors.FirstOrDefaultAsync(c => c.SourceName == "SemanticScholar", stoppingToken);
+                        string offsetValue = sScholarCursor?.LastCursor ?? "0";
+                        if (!int.TryParse(offsetValue, out int offset)) offset = 0;
 
-                            if (root.TryGetProperty("data", out var s2Data) && s2Data.ValueKind == JsonValueKind.Array)
+                        var sScholarUrl = $"https://api.semanticscholar.org/graph/v1/paper/search?query=computer+science&year={DateTime.UtcNow.Year}&limit=10&offset={offset}&fields=paperId,title,abstract,year,externalIds,url,citationCount,referenceCount,authors,venue,s2FieldsOfStudy";
+
+                        try
+                        {
+                            var sScholarRequest = new HttpRequestMessage(HttpMethod.Get, sScholarUrl);
+                            var config = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+                            var sScholarApiKey = config["SemanticScholarApiKey"];
+                            if (!string.IsNullOrWhiteSpace(sScholarApiKey))
                             {
-                                foreach (var paperVal in s2Data.EnumerateArray())
+                                sScholarRequest.Headers.Add("x-api-key", sScholarApiKey);
+                            }
+
+                            var sScholarResponse = await client.SendAsync(sScholarRequest, stoppingToken);
+                            if (sScholarResponse.IsSuccessStatusCode)
+                            {
+                                var sScholarJson = await sScholarResponse.Content.ReadAsStringAsync(stoppingToken);
+                                using var doc = JsonDocument.Parse(sScholarJson);
+                                var root = doc.RootElement;
+
+                                if (root.TryGetProperty("data", out var s2Data) && s2Data.ValueKind == JsonValueKind.Array)
                                 {
-                                    fetched++;
-                                    try
+                                    foreach (var paperVal in s2Data.EnumerateArray())
                                     {
-                                        var isInserted = await ProcessSemanticScholarPaperAsync(context, paperVal, keywordsUpdated, userServiceClient, stoppingToken);
-                                        if (isInserted) inserted++;
-                                        else updated++;
-                                    }
-                                    catch (Exception paperEx)
-                                    {
-                                        _logger.LogError(paperEx, "Error parsing Semantic Scholar paper");
-                                        context.SyncErrors.Add(new SyncError
+                                        fetched++;
+                                        try
                                         {
-                                            Id = Guid.NewGuid(),
-                                            JobId = job.Id,
-                                            ExternalId = paperVal.TryGetProperty("paperId", out var idProp) ? idProp.GetString() : "unknown",
-                                            ErrorType = "SemanticScholarPaperParsing",
-                                            ErrorDetail = paperEx.ToString(),
-                                            OccurredAt = DateTime.UtcNow
-                                        });
-                                        await context.SaveChangesAsync(stoppingToken);
+                                            var isInserted = await ProcessSemanticScholarPaperAsync(context, paperVal, keywordsUpdated, userServiceClient, stoppingToken);
+                                            if (isInserted) inserted++;
+                                            else updated++;
+                                        }
+                                        catch (Exception paperEx)
+                                        {
+                                            _logger.LogError(paperEx, "Error parsing Semantic Scholar paper");
+                                            context.SyncErrors.Add(new SyncError
+                                            {
+                                                Id = Guid.NewGuid(),
+                                                JobId = job.Id,
+                                                ExternalId = paperVal.TryGetProperty("paperId", out var idProp) ? idProp.GetString() : "unknown",
+                                                ErrorType = "SemanticScholarPaperParsing",
+                                                ErrorDetail = paperEx.ToString(),
+                                                OccurredAt = DateTime.UtcNow
+                                            });
+                                            await context.SaveChangesAsync(stoppingToken);
+                                        }
                                     }
                                 }
-                            }
 
-                            // Save next offset
-                            int nextOffset = offset + 10;
-                            if (sScholarCursor == null)
-                            {
-                                sScholarCursor = new SyncCursor { SourceName = "SemanticScholar" };
-                                context.SyncCursors.Add(sScholarCursor);
+                                // Save next offset
+                                int nextOffset = offset + 10;
+                                if (sScholarCursor == null)
+                                {
+                                    sScholarCursor = new SyncCursor { SourceName = "SemanticScholar" };
+                                    context.SyncCursors.Add(sScholarCursor);
+                                }
+                                sScholarCursor.LastCursor = nextOffset.ToString();
+                                sScholarCursor.LastSyncedAt = DateTime.UtcNow;
+                                sScholarCursor.UpdatedAt = DateTime.UtcNow;
+                                await context.SaveChangesAsync(stoppingToken);
                             }
-                            sScholarCursor.LastCursor = nextOffset.ToString();
-                            sScholarCursor.LastSyncedAt = DateTime.UtcNow;
-                            sScholarCursor.UpdatedAt = DateTime.UtcNow;
+                            else
+                            {
+                                throw new HttpRequestException($"Semantic Scholar API returned status code {sScholarResponse.StatusCode}");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error occurred during Semantic Scholar sync block.");
+                            context.SyncErrors.Add(new SyncError
+                            {
+                                Id = Guid.NewGuid(),
+                                JobId = job.Id,
+                                ErrorType = "SemanticScholarSyncBlock",
+                                ErrorDetail = ex.ToString(),
+                                OccurredAt = DateTime.UtcNow
+                            });
                             await context.SaveChangesAsync(stoppingToken);
                         }
-                        else
-                        {
-                            throw new HttpRequestException($"Semantic Scholar API returned status code {sScholarResponse.StatusCode}");
-                        }
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogError(ex, "Error occurred during Semantic Scholar sync block.");
-                        context.SyncErrors.Add(new SyncError
-                        {
-                            Id = Guid.NewGuid(),
-                            JobId = job.Id,
-                            ErrorType = "SemanticScholarSyncBlock",
-                            ErrorDetail = ex.ToString(),
-                            OccurredAt = DateTime.UtcNow
-                        });
-                        await context.SaveChangesAsync(stoppingToken);
+                        _logger.LogInformation("Semantic Scholar sync is disabled via Admin settings. Skipping.");
                     }
 
                     // 3. --- RECALCULATE SNAPSHOTS IN TREND SERVICE ---
@@ -271,6 +298,107 @@ namespace PaperService.Services
                         {
                             _logger.LogError(recEx, $"Error recalculating trend snapshot for keyword: {kw.Term}");
                         }
+                    }
+
+                    // ── Recalculate Author Snapshots ──
+                    var authors = await context.Authors.ToListAsync(stoppingToken);
+                    foreach (var author in authors)
+                    {
+                        try
+                        {
+                            var stats = await context.PaperAuthors
+                                .Where(pa => pa.AuthorId == author.Id && pa.Paper != null && pa.Paper.PublicationYear.HasValue)
+                                .Select(pa => new { Year = pa.Paper!.PublicationYear!.Value, Citation = pa.Paper.CitationCount })
+                                .ToListAsync(stoppingToken);
+
+                            var statsByYear = stats
+                                .GroupBy(s => s.Year)
+                                .Select(g => new { Year = g.Key, Count = g.Count(), Citations = g.Sum(s => s.Citation) });
+
+                            foreach (var stat in statsByYear)
+                            {
+                                await trendServiceClient.RecalculateAuthorSnapshotAsync(new RecalculateAuthorSnapshotDto
+                                {
+                                    AuthorId = author.Id,
+                                    AuthorName = author.Name,
+                                    Year = stat.Year,
+                                    PaperCount = stat.Count,
+                                    CitationSum = stat.Citations
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error recalculating trend snapshot for author: {author.Name}");
+                        }
+                    }
+
+                    // ── Recalculate Journal Snapshots ──
+                    var journals = await context.Journals.ToListAsync(stoppingToken);
+                    foreach (var journal in journals)
+                    {
+                        try
+                        {
+                            var stats = await context.Papers
+                                .Where(p => p.JournalId == journal.Id && p.PublicationYear.HasValue)
+                                .Select(p => new { Year = p.PublicationYear!.Value, Citation = p.CitationCount })
+                                .ToListAsync(stoppingToken);
+
+                            var statsByYear = stats
+                                .GroupBy(s => s.Year)
+                                .Select(g => new { Year = g.Key, Count = g.Count(), Citations = g.Sum(s => s.Citation) });
+
+                            foreach (var stat in statsByYear)
+                            {
+                                await trendServiceClient.RecalculateJournalSnapshotAsync(new RecalculateJournalSnapshotDto
+                                {
+                                    JournalId = journal.Id,
+                                    JournalName = journal.Name,
+                                    Year = stat.Year,
+                                    PaperCount = stat.Count,
+                                    CitationSum = stat.Citations
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error recalculating trend snapshot for journal: {journal.Name}");
+                        }
+                    }
+
+                    // ── Recalculate Topic Snapshots ──
+                    try
+                    {
+                        var topicStats = await context.Papers
+                            .Where(p => p.FieldsOfStudy != null && p.PublicationYear.HasValue)
+                            .Select(p => new { p.FieldsOfStudy, Year = p.PublicationYear!.Value, Citation = p.CitationCount })
+                            .ToListAsync(stoppingToken);
+                        
+                        var topicGroups = topicStats
+                            .SelectMany(p => p.FieldsOfStudy!.Select(topic => new { Topic = topic, p.Year, p.Citation }))
+                            .GroupBy(x => new { x.Topic, x.Year })
+                            .Select(g => new {
+                                Topic = g.Key.Topic,
+                                Year = g.Key.Year,
+                                Count = g.Count(),
+                                Citations = g.Sum(x => x.Citation)
+                            });
+
+                        foreach (var stat in topicGroups)
+                        {
+                            await trendServiceClient.RecalculateTopicSnapshotAsync(new RecalculateTopicSnapshotDto
+                            {
+                                TopicId = stat.Topic,
+                                TopicName = stat.Topic,
+                                Year = stat.Year,
+                                PaperCount = stat.Count,
+                                CitationSum = stat.Citations
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error recalculating trend snapshot for topics.");
                     }
 
                     // Update the sync job status to Success

@@ -127,9 +127,16 @@ public sealed class AdminController(IAdminManagementService adminManagementServi
             return idFromClaim;
         }
 
-        // 2. Fallback to header
-        var value = Request.Headers["X-Admin-User-Id"].FirstOrDefault();
-        return Guid.TryParse(value, out var id) ? id : Guid.Empty;
+        // 2. Try to read from X-User-Id header
+        var userIdHeader = Request.Headers["X-User-Id"].FirstOrDefault();
+        if (Guid.TryParse(userIdHeader, out var idFromUserIdHeader))
+        {
+            return idFromUserIdHeader;
+        }
+
+        // 3. Fallback to X-Admin-User-Id header
+        var adminUserIdHeader = Request.Headers["X-Admin-User-Id"].FirstOrDefault();
+        return Guid.TryParse(adminUserIdHeader, out var id) ? id : Guid.Empty;
     }
 
     private IActionResult ToContentResult(ProxyResponse response)
