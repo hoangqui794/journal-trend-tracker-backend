@@ -120,7 +120,11 @@ app.UseSwagger(c =>
 });
 app.UseSwaggerUI();
 
-app.UseCors("AllowGateway");
+app.UseCors(builder => builder
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
+
 // app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
