@@ -48,6 +48,7 @@ namespace IdentityService.Services
                     smtpClient.Port = port;
                     smtpClient.Credentials = new NetworkCredential(username, password);
                     smtpClient.EnableSsl = enableSsl;
+                    smtpClient.Timeout = 15000; // 15 seconds
 
                     using (var mailMessage = new MailMessage())
                     {
