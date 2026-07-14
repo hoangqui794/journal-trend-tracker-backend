@@ -17,7 +17,26 @@ public sealed class AdminManagementService(
         try
         {
             var response = await httpClientFactory.CreateClient("identity").GetAsync("/api/identity/users");
-            return await ProxyResponse.FromHttpResponseAsync(response);
+            if (!response.IsSuccessStatusCode)
+            {
+                return await ProxyResponse.FromHttpResponseAsync(response);
+            }
+
+            var content = await response.Content.ReadAsStringAsync();
+            var deserializeOptions = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+            var users = JsonSerializer.Deserialize<List<IdentityUserDto>>(content, deserializeOptions);
+
+            var serializeOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+            var camelCaseJson = JsonSerializer.Serialize(users, serializeOptions);
+
+            return new ProxyResponse(response.StatusCode, camelCaseJson, "application/json");
         }
         catch (HttpRequestException ex)
         {
@@ -275,5 +294,53 @@ public sealed class AdminManagementService(
             detail = ex.Message
         });
         return new ProxyResponse(HttpStatusCode.ServiceUnavailable, payload);
+    }
+
+    public async Task<ProxyResponse> DeactivateUserAsync(Guid userId, Guid adminUserId, string? ipAddress)
+    {
+        try
+        {
+            var identityClient = httpClientFactory.CreateClient("identity");
+
+            var response = await identityClient.PutAsJsonAsync(
+                $"/api/identity/users/{userId}/status",
+                new { status = "locked" });
+
+            if (response.IsSuccessStatusCode)
+            {
+                repository.AddAuditLog(new AuditLog
+                {
+                    AdminUserId = adminUserId,
+                    Action = "DEACTIVATE_USER",
+                    EntityType = "User",
+                    EntityId = userId,
+                    OldValue = JsonSerializer.SerializeToDocument(new { status = "active" }),
+                    NewValue = JsonSerializer.SerializeToDocument(new { status = "locked" }),
+                    IpAddress = ipAddress,
+                    CreatedAt = DateTimeOffset.UtcNow
+                });
+                await repository.SaveChangesAsync();
+            }
+
+            return await ProxyResponse.FromHttpResponseAsync(response);
+        }
+        catch (HttpRequestException ex)
+        {
+            return ServiceUnavailable("IdentityService", ex);
+        }
+    }
+
+    private sealed class IdentityUserDto
+    {
+        public Guid Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string? AvatarUrl { get; set; }
+        public int Provider { get; set; }
+        public int Role { get; set; }
+        public int Status { get; set; }
+        public DateTime? LastLoginAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 }

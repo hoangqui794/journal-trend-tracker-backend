@@ -28,6 +28,17 @@ public sealed class AdminController(IAdminManagementService adminManagementServi
         return ToContentResult(response);
     }
 
+    [HttpDelete("users/{id:guid}")]
+    public async Task<IActionResult> DeactivateUser(Guid id)
+    {
+        var response = await adminManagementService.DeactivateUserAsync(
+            id,
+            GetAdminUserId(),
+            HttpContext.Connection.RemoteIpAddress?.ToString());
+
+        return ToContentResult(response);
+    }
+
     [HttpGet("api-sources")]
     public async Task<IActionResult> GetApiSources()
     {
