@@ -64,6 +64,26 @@ public class TrendsController : ControllerBase
         return Ok(result);
     }
 
+    // GET /api/trends/topics/{id}
+    [HttpGet("topics/{id:guid}")]
+    public async Task<IActionResult> GetTopicTrend(Guid id)
+    {
+        var result = await _service.GetTopicTrendAsync(id);
+        if (result == null)
+            return NotFound("Không tìm thấy dữ liệu xu hướng cho chủ đề này.");
+        return Ok(result);
+    }
+
+    // GET /api/trends/authors/{id}
+    [HttpGet("authors/{id:guid}")]
+    public async Task<IActionResult> GetAuthorTrend(Guid id)
+    {
+        var result = await _service.GetAuthorTrendAsync(id);
+        if (result == null)
+            return NotFound("Không tìm thấy dữ liệu xu hướng cho tác giả này.");
+        return Ok(result);
+    }
+
     // GET /api/trends/top-journals
     [HttpGet("top-journals")]
     public async Task<IActionResult> GetTopJournals()
@@ -143,6 +163,45 @@ public class TrendsController : ControllerBase
         if (dto.KeywordId == Guid.Empty)
             return BadRequest("KeywordId không hợp lệ.");
         await _service.RecalculateSnapshotAsync(dto);
+        return Ok();
+    }
+
+    // POST /api/trends/snapshots/journals/recalculate
+    [HttpPost("snapshots/journals/recalculate")]
+    public async Task<IActionResult> RecalculateJournalSnapshot([FromBody] RecalculateJournalSnapshotDto dto)
+    {
+        if (!IsInternalRequestValid())
+            return StatusCode(403, "Forbidden: Invalid Internal Secret");
+
+        if (dto.JournalId == Guid.Empty)
+            return BadRequest("JournalId không hợp lệ.");
+        await _service.RecalculateJournalSnapshotAsync(dto);
+        return Ok();
+    }
+
+    // POST /api/trends/snapshots/topics/recalculate
+    [HttpPost("snapshots/topics/recalculate")]
+    public async Task<IActionResult> RecalculateTopicSnapshot([FromBody] RecalculateTopicSnapshotDto dto)
+    {
+        if (!IsInternalRequestValid())
+            return StatusCode(403, "Forbidden: Invalid Internal Secret");
+
+        if (dto.TopicId == Guid.Empty)
+            return BadRequest("TopicId không hợp lệ.");
+        await _service.RecalculateTopicSnapshotAsync(dto);
+        return Ok();
+    }
+
+    // POST /api/trends/snapshots/authors/recalculate
+    [HttpPost("snapshots/authors/recalculate")]
+    public async Task<IActionResult> RecalculateAuthorSnapshot([FromBody] RecalculateAuthorSnapshotDto dto)
+    {
+        if (!IsInternalRequestValid())
+            return StatusCode(403, "Forbidden: Invalid Internal Secret");
+
+        if (dto.AuthorId == Guid.Empty)
+            return BadRequest("AuthorId không hợp lệ.");
+        await _service.RecalculateAuthorSnapshotAsync(dto);
         return Ok();
     }
 }

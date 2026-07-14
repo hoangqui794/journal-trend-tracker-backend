@@ -24,6 +24,9 @@ public partial class TrendDbContext : DbContext
 
     public virtual DbSet<TrendSnapshot> TrendSnapshots { get; set; }
 
+    public virtual DbSet<TopicTrendSnapshot> TopicTrendSnapshots { get; set; }
+
+    public virtual DbSet<AuthorTrendSnapshot> AuthorTrendSnapshots { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -140,6 +143,70 @@ public partial class TrendDbContext : DbContext
             entity.Property(e => e.KeywordTerm)
                 .HasMaxLength(255)
                 .HasColumnName("keyword_term");
+            entity.Property(e => e.PaperCount)
+                .HasDefaultValue(0)
+                .HasColumnName("paper_count");
+            entity.Property(e => e.RecordedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("recorded_at");
+            entity.Property(e => e.Year).HasColumnName("year");
+        });
+
+        modelBuilder.Entity<TopicTrendSnapshot>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("topic_trend_snapshots_pkey");
+
+            entity.ToTable("topic_trend_snapshots");
+
+            entity.HasIndex(e => e.TopicId, "idx_topic_trend_id");
+
+            entity.HasIndex(e => e.Year, "idx_topic_trend_year");
+
+            entity.HasIndex(e => new { e.TopicId, e.Year }, "uq_topic_trend").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("id");
+            entity.Property(e => e.CitationSum)
+                .HasDefaultValue(0)
+                .HasColumnName("citation_sum");
+            entity.Property(e => e.GrowthRate).HasColumnName("growth_rate");
+            entity.Property(e => e.TopicId).HasColumnName("topic_id");
+            entity.Property(e => e.TopicName)
+                .HasMaxLength(255)
+                .HasColumnName("topic_name");
+            entity.Property(e => e.PaperCount)
+                .HasDefaultValue(0)
+                .HasColumnName("paper_count");
+            entity.Property(e => e.RecordedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("recorded_at");
+            entity.Property(e => e.Year).HasColumnName("year");
+        });
+
+        modelBuilder.Entity<AuthorTrendSnapshot>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("author_trend_snapshots_pkey");
+
+            entity.ToTable("author_trend_snapshots");
+
+            entity.HasIndex(e => e.AuthorId, "idx_author_trend_id");
+
+            entity.HasIndex(e => e.Year, "idx_author_trend_year");
+
+            entity.HasIndex(e => new { e.AuthorId, e.Year }, "uq_author_trend").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("uuid_generate_v4()")
+                .HasColumnName("id");
+            entity.Property(e => e.CitationSum)
+                .HasDefaultValue(0)
+                .HasColumnName("citation_sum");
+            entity.Property(e => e.GrowthRate).HasColumnName("growth_rate");
+            entity.Property(e => e.AuthorId).HasColumnName("author_id");
+            entity.Property(e => e.AuthorName)
+                .HasMaxLength(255)
+                .HasColumnName("author_name");
             entity.Property(e => e.PaperCount)
                 .HasDefaultValue(0)
                 .HasColumnName("paper_count");

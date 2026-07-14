@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using TrendService.DBContext;
 using TrendService.DTOs;
 using TrendService.Models;
@@ -27,6 +27,22 @@ public class TrendRepository : ITrendRepository
         return await _context.JournalTrendSnapshots
             .Where(j => j.JournalId == journalId)
             .OrderBy(j => j.Year)
+            .ToListAsync();
+    }
+
+    public async Task<List<TopicTrendSnapshot>> GetTopicTrendAsync(Guid topicId)
+    {
+        return await _context.TopicTrendSnapshots
+            .Where(t => t.TopicId == topicId)
+            .OrderBy(t => t.Year)
+            .ToListAsync();
+    }
+
+    public async Task<List<AuthorTrendSnapshot>> GetAuthorTrendAsync(Guid authorId)
+    {
+        return await _context.AuthorTrendSnapshots
+            .Where(a => a.AuthorId == authorId)
+            .OrderBy(a => a.Year)
             .ToListAsync();
     }
 
@@ -65,18 +81,21 @@ public class TrendRepository : ITrendRepository
             .ToListAsync();
     }
 
-    public async Task<List<HotTopicDto>> GetHotTopicsAsync(int top)
+    public async Task<List<TopTopicDto>> GetHotTopicsAsync(int top)
     {
-        var since = DateTime.UtcNow.AddDays(-30);
-        return await _context.SearchHistories
-            .Where(s => s.CreatedAt >= since)
-            .GroupBy(s => s.Query)
-            .Select(g => new HotTopicDto
+        var currentYear = (short)DateTime.UtcNow.Year;
+        return await _context.TopicTrendSnapshots
+            .Where(t => t.Year == currentYear || t.Year == currentYear - 1)
+            .GroupBy(t => new { t.TopicId, t.TopicName })
+            .Select(g => new TopTopicDto
             {
-                Query = g.Key,
-                SearchCount = g.Count()
+                TopicId = g.Key.TopicId,
+                TopicName = g.Key.TopicName,
+                PaperCount = g.Sum(x => x.PaperCount),
+                GrowthRate = g.OrderByDescending(x => x.Year).Select(x => x.GrowthRate).FirstOrDefault()
             })
-            .OrderByDescending(x => x.SearchCount)
+            .OrderByDescending(t => t.GrowthRate)
+            .ThenByDescending(t => t.PaperCount)
             .Take(top)
             .ToListAsync();
     }
@@ -139,4 +158,83 @@ public class TrendRepository : ITrendRepository
         }
         await _context.SaveChangesAsync();
     }
+
+    public async Task UpsertJournalSnapshotAsync(JournalTrendSnapshot snapshot)
+    {
+        var existing = await _context.JournalTrendSnapshots
+            .FirstOrDefaultAsync(t => t.JournalId == snapshot.JournalId
+                                   && t.Year == snapshot.Year);
+        if (existing == null)
+        {
+            await _context.JournalTrendSnapshots.AddAsync(snapshot);
+        }
+        else
+        {
+            var prevYear = await _context.JournalTrendSnapshots
+                .FirstOrDefaultAsync(t => t.JournalId == snapshot.JournalId
+                                       && t.Year == snapshot.Year - 1);
+
+            existing.PaperCount = snapshot.PaperCount;
+            existing.CitationSum = snapshot.CitationSum;
+            existing.RecordedAt = DateTime.UtcNow;
+            existing.GrowthRate = prevYear != null && prevYear.PaperCount > 0
+                ? Math.Round((double)(snapshot.PaperCount - prevYear.PaperCount)
+                             / prevYear.PaperCount * 100, 2)
+                : null;
+        }
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpsertTopicSnapshotAsync(TopicTrendSnapshot snapshot)
+    {
+        var existing = await _context.TopicTrendSnapshots
+            .FirstOrDefaultAsync(t => t.TopicId == snapshot.TopicId
+                                   && t.Year == snapshot.Year);
+        if (existing == null)
+        {
+            await _context.TopicTrendSnapshots.AddAsync(snapshot);
+        }
+        else
+        {
+            var prevYear = await _context.TopicTrendSnapshots
+                .FirstOrDefaultAsync(t => t.TopicId == snapshot.TopicId
+                                       && t.Year == snapshot.Year - 1);
+
+            existing.PaperCount = snapshot.PaperCount;
+            existing.CitationSum = snapshot.CitationSum;
+            existing.RecordedAt = DateTime.UtcNow;
+            existing.GrowthRate = prevYear != null && prevYear.PaperCount > 0
+                ? Math.Round((double)(snapshot.PaperCount - prevYear.PaperCount)
+                             / prevYear.PaperCount * 100, 2)
+                : null;
+        }
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task UpsertAuthorSnapshotAsync(AuthorTrendSnapshot snapshot)
+    {
+        var existing = await _context.AuthorTrendSnapshots
+            .FirstOrDefaultAsync(t => t.AuthorId == snapshot.AuthorId
+                                   && t.Year == snapshot.Year);
+        if (existing == null)
+        {
+            await _context.AuthorTrendSnapshots.AddAsync(snapshot);
+        }
+        else
+        {
+            var prevYear = await _context.AuthorTrendSnapshots
+                .FirstOrDefaultAsync(t => t.AuthorId == snapshot.AuthorId
+                                       && t.Year == snapshot.Year - 1);
+
+            existing.PaperCount = snapshot.PaperCount;
+            existing.CitationSum = snapshot.CitationSum;
+            existing.RecordedAt = DateTime.UtcNow;
+            existing.GrowthRate = prevYear != null && prevYear.PaperCount > 0
+                ? Math.Round((double)(snapshot.PaperCount - prevYear.PaperCount)
+                             / prevYear.PaperCount * 100, 2)
+                : null;
+        }
+        await _context.SaveChangesAsync();
+    }
+
 }
