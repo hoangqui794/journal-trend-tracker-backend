@@ -267,15 +267,35 @@ public sealed class AdminManagementService(
         try
         {
             using var doc = JsonDocument.Parse(userJson);
-            if (doc.RootElement.TryGetProperty("status", out var statusValue) &&
-                statusValue.ValueKind == JsonValueKind.String)
+            JsonElement statusElement = default;
+            bool found = false;
+            
+            if (doc.RootElement.TryGetProperty("status", out statusElement))
             {
-                return statusValue.GetString() ?? "active";
+                found = true;
             }
-            if (doc.RootElement.TryGetProperty("Status", out var statusValuePascal) &&
-                statusValuePascal.ValueKind == JsonValueKind.String)
+            else if (doc.RootElement.TryGetProperty("Status", out statusElement))
             {
-                return statusValuePascal.GetString() ?? "active";
+                found = true;
+            }
+
+            if (found)
+            {
+                if (statusElement.ValueKind == JsonValueKind.String)
+                {
+                    return statusElement.GetString() ?? "active";
+                }
+                else if (statusElement.ValueKind == JsonValueKind.Number)
+                {
+                    int statusCode = statusElement.GetInt32();
+                    return statusCode switch
+                    {
+                        0 => "active",
+                        1 => "locked",
+                        2 => "pending",
+                        _ => "active"
+                    };
+                }
             }
         }
         catch
