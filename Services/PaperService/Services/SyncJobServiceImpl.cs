@@ -177,7 +177,7 @@ namespace PaperService.Services
                         string offsetValue = sScholarCursor?.LastCursor ?? "0";
                         if (!int.TryParse(offsetValue, out int offset)) offset = 0;
 
-                        var sScholarUrl = $"https://api.semanticscholar.org/graph/v1/paper/search?query=computer+science&limit=10&offset={offset}&fields=paperId,title,abstract,year,externalIds,url,citationCount,referenceCount,authors,venue,s2FieldsOfStudy";
+                        var sScholarUrl = $"https://api.semanticscholar.org/graph/v1/paper/search?query=computer+science&year={DateTime.UtcNow.Year}&limit=10&offset={offset}&fields=paperId,title,abstract,year,externalIds,url,citationCount,referenceCount,authors,venue,s2FieldsOfStudy";
 
                         try
                         {
