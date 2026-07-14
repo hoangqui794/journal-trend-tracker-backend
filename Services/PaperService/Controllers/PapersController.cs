@@ -28,14 +28,39 @@ namespace PaperService.Controllers
             
             if (!string.IsNullOrWhiteSpace(filter.Keyword))
             {
-                // Fire and forget call to TrendService
                 _ = Task.Run(async () =>
                 {
                     await _trendServiceClient.LogSearchHistoryAsync(new SearchHistoryLogDto
                     {
-                        UserId = null, // TODO: Extract from HttpContext.User when Authentication is configured
+                        UserId = null,
                         Query = filter.Keyword,
                         SearchType = "keyword",
+                        ResultCount = result.TotalCount
+                    });
+                });
+            }
+            else if (filter.AuthorId.HasValue)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await _trendServiceClient.LogSearchHistoryAsync(new SearchHistoryLogDto
+                    {
+                        UserId = null,
+                        Query = filter.AuthorId.Value.ToString(),
+                        SearchType = "author",
+                        ResultCount = result.TotalCount
+                    });
+                });
+            }
+            else if (filter.JournalId.HasValue)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await _trendServiceClient.LogSearchHistoryAsync(new SearchHistoryLogDto
+                    {
+                        UserId = null,
+                        Query = filter.JournalId.Value.ToString(),
+                        SearchType = "journal",
                         ResultCount = result.TotalCount
                     });
                 });

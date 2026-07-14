@@ -7,5 +7,8 @@ namespace PaperService.Clients
     {
         Task LogSearchHistoryAsync(SearchHistoryLogDto dto);
         Task RecalculateSnapshotAsync(RecalculateSnapshotDto dto);
+        Task RecalculateJournalSnapshotAsync(RecalculateJournalSnapshotDto dto);
+        Task RecalculateTopicSnapshotAsync(RecalculateTopicSnapshotDto dto);
+        Task RecalculateAuthorSnapshotAsync(RecalculateAuthorSnapshotDto dto);
     }
 }

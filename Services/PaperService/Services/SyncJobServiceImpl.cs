@@ -300,6 +300,107 @@ namespace PaperService.Services
                         }
                     }
 
+                    // ── Recalculate Author Snapshots ──
+                    var authors = await context.Authors.ToListAsync(stoppingToken);
+                    foreach (var author in authors)
+                    {
+                        try
+                        {
+                            var stats = await context.PaperAuthors
+                                .Where(pa => pa.AuthorId == author.Id && pa.Paper != null && pa.Paper.PublicationYear.HasValue)
+                                .Select(pa => new { Year = pa.Paper!.PublicationYear!.Value, Citation = pa.Paper.CitationCount })
+                                .ToListAsync(stoppingToken);
+
+                            var statsByYear = stats
+                                .GroupBy(s => s.Year)
+                                .Select(g => new { Year = g.Key, Count = g.Count(), Citations = g.Sum(s => s.Citation) });
+
+                            foreach (var stat in statsByYear)
+                            {
+                                await trendServiceClient.RecalculateAuthorSnapshotAsync(new RecalculateAuthorSnapshotDto
+                                {
+                                    AuthorId = author.Id,
+                                    AuthorName = author.Name,
+                                    Year = stat.Year,
+                                    PaperCount = stat.Count,
+                                    CitationSum = stat.Citations
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error recalculating trend snapshot for author: {author.Name}");
+                        }
+                    }
+
+                    // ── Recalculate Journal Snapshots ──
+                    var journals = await context.Journals.ToListAsync(stoppingToken);
+                    foreach (var journal in journals)
+                    {
+                        try
+                        {
+                            var stats = await context.Papers
+                                .Where(p => p.JournalId == journal.Id && p.PublicationYear.HasValue)
+                                .Select(p => new { Year = p.PublicationYear!.Value, Citation = p.CitationCount })
+                                .ToListAsync(stoppingToken);
+
+                            var statsByYear = stats
+                                .GroupBy(s => s.Year)
+                                .Select(g => new { Year = g.Key, Count = g.Count(), Citations = g.Sum(s => s.Citation) });
+
+                            foreach (var stat in statsByYear)
+                            {
+                                await trendServiceClient.RecalculateJournalSnapshotAsync(new RecalculateJournalSnapshotDto
+                                {
+                                    JournalId = journal.Id,
+                                    JournalName = journal.Name,
+                                    Year = stat.Year,
+                                    PaperCount = stat.Count,
+                                    CitationSum = stat.Citations
+                                });
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Error recalculating trend snapshot for journal: {journal.Name}");
+                        }
+                    }
+
+                    // ── Recalculate Topic Snapshots ──
+                    try
+                    {
+                        var topicStats = await context.Papers
+                            .Where(p => p.FieldsOfStudy != null && p.PublicationYear.HasValue)
+                            .Select(p => new { p.FieldsOfStudy, Year = p.PublicationYear!.Value, Citation = p.CitationCount })
+                            .ToListAsync(stoppingToken);
+                        
+                        var topicGroups = topicStats
+                            .SelectMany(p => p.FieldsOfStudy!.Select(topic => new { Topic = topic, p.Year, p.Citation }))
+                            .GroupBy(x => new { x.Topic, x.Year })
+                            .Select(g => new {
+                                Topic = g.Key.Topic,
+                                Year = g.Key.Year,
+                                Count = g.Count(),
+                                Citations = g.Sum(x => x.Citation)
+                            });
+
+                        foreach (var stat in topicGroups)
+                        {
+                            await trendServiceClient.RecalculateTopicSnapshotAsync(new RecalculateTopicSnapshotDto
+                            {
+                                TopicId = stat.Topic,
+                                TopicName = stat.Topic,
+                                Year = stat.Year,
+                                PaperCount = stat.Count,
+                                CitationSum = stat.Citations
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error recalculating trend snapshot for topics.");
+                    }
+
                     // Update the sync job status to Success
                     job.Status = SyncStatus.Success;
                     job.FinishedAt = DateTime.UtcNow;
