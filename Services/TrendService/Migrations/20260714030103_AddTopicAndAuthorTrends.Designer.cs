@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TrendService.DBContext;
@@ -11,9 +12,11 @@ using TrendService.DBContext;
 namespace TrendService.Migrations
 {
     [DbContext(typeof(TrendDbContext))]
-    partial class TrendDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260714030103_AddTopicAndAuthorTrends")]
+    partial class AddTopicAndAuthorTrends
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
