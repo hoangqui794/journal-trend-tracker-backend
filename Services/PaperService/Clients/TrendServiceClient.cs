@@ -56,5 +56,58 @@ namespace PaperService.Clients
                 _logger.LogError(ex, "Exception occurred while recalculating snapshot to TrendService");
             }
         }
+        public async Task RecalculateJournalSnapshotAsync(RecalculateJournalSnapshotDto dto)
+        {
+            try
+            {
+                var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("/api/trends/snapshots/journals/recalculate", content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to recalculate journal snapshot to TrendService. Status: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while recalculating journal snapshot to TrendService");
+            }
+        }
+
+        public async Task RecalculateTopicSnapshotAsync(RecalculateTopicSnapshotDto dto)
+        {
+            try
+            {
+                var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("/api/trends/snapshots/topics/recalculate", content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to recalculate topic snapshot to TrendService. Status: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while recalculating topic snapshot to TrendService");
+            }
+        }
+
+        public async Task RecalculateAuthorSnapshotAsync(RecalculateAuthorSnapshotDto dto)
+        {
+            try
+            {
+                var content = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("/api/trends/snapshots/authors/recalculate", content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to recalculate author snapshot to TrendService. Status: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while recalculating author snapshot to TrendService");
+            }
+        }
     }
 }
