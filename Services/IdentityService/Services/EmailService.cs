@@ -25,6 +25,11 @@ namespace IdentityService.Services
                 var smtpServer = _configuration["EmailSettings:SmtpServer"] ?? "smtp.gmail.com";
                 var portStr = _configuration["EmailSettings:Port"] ?? "587";
                 var senderEmail = _configuration["EmailSettings:SenderEmail"] ?? "";
+                var username = _configuration["EmailSettings:Username"] ?? "";
+                if (string.IsNullOrEmpty(username))
+                {
+                    username = senderEmail;
+                }
                 var senderName = _configuration["EmailSettings:SenderName"] ?? "Journal Trend Tracker";
                 var password = _configuration["EmailSettings:Password"] ?? "";
                 var enableSslStr = _configuration["EmailSettings:EnableSsl"] ?? "true";
@@ -41,7 +46,7 @@ namespace IdentityService.Services
                 using (var smtpClient = new SmtpClient(smtpServer))
                 {
                     smtpClient.Port = port;
-                    smtpClient.Credentials = new NetworkCredential(senderEmail, password);
+                    smtpClient.Credentials = new NetworkCredential(username, password);
                     smtpClient.EnableSsl = enableSsl;
 
                     using (var mailMessage = new MailMessage())
