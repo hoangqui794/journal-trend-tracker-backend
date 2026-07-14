@@ -181,7 +181,15 @@ namespace PaperService.Services
 
                         try
                         {
-                            var sScholarResponse = await client.GetAsync(sScholarUrl, stoppingToken);
+                            var sScholarRequest = new HttpRequestMessage(HttpMethod.Get, sScholarUrl);
+                            var config = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+                            var sScholarApiKey = config["SemanticScholarApiKey"];
+                            if (!string.IsNullOrWhiteSpace(sScholarApiKey))
+                            {
+                                sScholarRequest.Headers.Add("x-api-key", sScholarApiKey);
+                            }
+
+                            var sScholarResponse = await client.SendAsync(sScholarRequest, stoppingToken);
                             if (sScholarResponse.IsSuccessStatusCode)
                             {
                                 var sScholarJson = await sScholarResponse.Content.ReadAsStringAsync(stoppingToken);
