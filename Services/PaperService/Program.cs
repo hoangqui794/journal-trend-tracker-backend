@@ -44,6 +44,12 @@ builder.Services.AddHttpClient<PaperService.Clients.IUserServiceClient, PaperSer
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 
+builder.Services.AddHttpClient<PaperService.Clients.IAdminServiceClient, PaperService.Clients.AdminServiceClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:AdminService"] ?? "http://localhost:5005");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+
 // Configure Npgsql DataSource to map enums
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("PaperConnection"));
 dataSourceBuilder.MapEnum<PaperSource>("paper_source");
