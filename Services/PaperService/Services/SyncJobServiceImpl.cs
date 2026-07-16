@@ -50,11 +50,9 @@ namespace PaperService.Services
                 var context = scope.ServiceProvider.GetRequiredService<PaperDbContext>();
                 var userServiceClient = scope.ServiceProvider.GetRequiredService<IUserServiceClient>();
                 var trendServiceClient = scope.ServiceProvider.GetRequiredService<ITrendServiceClient>();
-                var adminServiceClient = scope.ServiceProvider.GetRequiredService<IAdminServiceClient>();
-
-                var apiSources = await adminServiceClient.GetApiSourcesAsync();
-                bool isOpenAlexActive = apiSources.FirstOrDefault(s => s.Name.Contains("OpenAlex", StringComparison.OrdinalIgnoreCase))?.IsActive ?? true;
-                bool isSemanticScholarActive = apiSources.FirstOrDefault(s => s.Name.Contains("Semantic", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Scholar", StringComparison.OrdinalIgnoreCase))?.IsActive ?? true;
+                // AdminService is not available on Render - hardcode both sources as active
+                bool isOpenAlexActive = true;
+                bool isSemanticScholarActive = true;
 
                 // Create a new ApiSyncJob record in the database
                 var job = new ApiSyncJob
@@ -91,7 +89,7 @@ namespace PaperService.Services
                         _logger.LogInformation("Starting OpenAlex Sync...");
                         var openAlexCursor = await context.SyncCursors.FirstOrDefaultAsync(c => c.SourceName == "OpenAlex", stoppingToken);
                         string cursorValue = openAlexCursor?.LastCursor ?? "*";
-                        var openAlexUrl = $"https://api.openalex.org/works?filter=default.search:computer,publication_year:2025&per_page=10&cursor={Uri.EscapeDataString(cursorValue)}";
+                        var openAlexUrl = $"https://api.openalex.org/works?filter=default.search:computer,publication_year:2025&per_page=10&cursor={Uri.EscapeDataString(cursorValue)}&mailto=sonngocson25@gmail.com";
                         
                         try
                         {
