@@ -34,10 +34,11 @@ namespace PaperService.Services
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<PaperDbContext>();
             
-            await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE papers, journals, authors, keywords, sync_cursors, api_sync_jobs, sync_errors CASCADE;", stoppingToken);
+            // CHỈ XÓA CURSOR ĐỂ BẢO TOÀN BÀI BÁO CŨ
+            await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE sync_cursors;", stoppingToken);
             await context.Database.ExecuteSqlRawAsync("INSERT INTO sync_cursors (id, source_name, updated_at) VALUES (gen_random_uuid(), 'OpenAlex', NOW()), (gen_random_uuid(), 'SemanticScholar', NOW()), (gen_random_uuid(), 'Crossref', NOW());", stoppingToken);
             
-            _logger.LogInformation("Mock data wiped successfully.");
+            _logger.LogInformation("Cursors wiped successfully. Papers preserved.");
         }
 
         public async Task DoSyncWorkAsync(CancellationToken stoppingToken)
