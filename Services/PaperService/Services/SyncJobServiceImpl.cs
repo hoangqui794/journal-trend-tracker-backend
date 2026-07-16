@@ -606,12 +606,15 @@ namespace PaperService.Services
                                 await context.SaveChangesAsync(stoppingToken);
                             }
 
-                            authorLinks.Add(new PaperAuthor
+                            if (!authorLinks.Any(al => al.AuthorId == author.Id))
                             {
-                                PaperId = paper.Id,
-                                AuthorId = author.Id,
-                                AuthorOrder = order++
-                            });
+                                authorLinks.Add(new PaperAuthor
+                                {
+                                    PaperId = paper.Id,
+                                    AuthorId = author.Id,
+                                    AuthorOrder = order++
+                                });
+                            }
                         }
                     }
                 }
@@ -777,8 +780,14 @@ namespace PaperService.Services
                         var cat = catProp.GetString();
                         if (!string.IsNullOrWhiteSpace(cat))
                         {
-                            fieldsOfStudy.Add(cat);
-                            extractedKeywords.Add((cat, 0.9));
+                            if (!fieldsOfStudy.Contains(cat))
+                            {
+                                fieldsOfStudy.Add(cat);
+                            }
+                            if (!extractedKeywords.Any(k => k.Term.Equals(cat, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                extractedKeywords.Add((cat, 0.9));
+                            }
                         }
                     }
                 }
@@ -847,12 +856,15 @@ namespace PaperService.Services
                             await context.SaveChangesAsync(stoppingToken);
                         }
 
-                        authorLinks.Add(new PaperAuthor
+                        if (!authorLinks.Any(al => al.AuthorId == author.Id))
                         {
-                            PaperId = paper.Id,
-                            AuthorId = author.Id,
-                            AuthorOrder = order++
-                        });
+                            authorLinks.Add(new PaperAuthor
+                            {
+                                PaperId = paper.Id,
+                                AuthorId = author.Id,
+                                AuthorOrder = order++
+                            });
+                        }
                     }
                 }
             }
