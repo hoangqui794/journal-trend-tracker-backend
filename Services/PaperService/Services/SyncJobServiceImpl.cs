@@ -260,7 +260,9 @@ namespace PaperService.Services
                         _logger.LogInformation("Semantic Scholar sync is disabled via Admin settings. Skipping.");
                     }
 
-                    // 3. --- RECALCULATE SNAPSHOTS IN TREND SERVICE ---
+                    // --- RECALCULATE SNAPSHOTS IN TREND SERVICE ---
+                    // TEMPORARILY DISABLED FOR DEMO TO PREVENT HANGS
+                    /*
                     _logger.LogInformation($"Recalculating trend snapshots for {keywordsUpdated.Count} updated keywords...");
                     foreach (var kw in keywordsUpdated)
                     {
@@ -694,6 +696,7 @@ namespace PaperService.Services
                 await context.SaveChangesAsync(stoppingToken);
 
                 // Trigger Notification to UserService
+                /* TEMPORARILY DISABLED
                 var notificationDto = new NotificationTriggerDto
                 {
                     Keyword = keyword.Term,
@@ -701,6 +704,7 @@ namespace PaperService.Services
                     PaperTitle = paper.Title
                 };
                 await userServiceClient.TriggerNotificationAsync(notificationDto);
+                */
             }
 
             return true; // inserted
@@ -913,6 +917,7 @@ namespace PaperService.Services
                 await context.SaveChangesAsync(stoppingToken);
 
                 // Trigger Notification to UserService
+                /* TEMPORARILY DISABLED
                 var notificationDto = new NotificationTriggerDto
                 {
                     Keyword = keyword.Term,
@@ -920,6 +925,7 @@ namespace PaperService.Services
                     PaperTitle = paper.Title
                 };
                 await userServiceClient.TriggerNotificationAsync(notificationDto);
+                */
             }
 
             return true; // inserted
