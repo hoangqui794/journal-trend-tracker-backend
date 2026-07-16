@@ -402,6 +402,7 @@ namespace PaperService.Services
                     {
                         _logger.LogError(ex, "Error recalculating trend snapshot for topics.");
                     }
+                    */
 
                     // Update the sync job status to Success
                     job.Status = SyncStatus.Success;
