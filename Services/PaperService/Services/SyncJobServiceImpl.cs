@@ -659,6 +659,11 @@ namespace PaperService.Services
                 }
             }
 
+            extractedKeywords = extractedKeywords
+                .GroupBy(k => k.Term.ToLowerInvariant().Trim())
+                .Select(g => g.First())
+                .ToList();
+
             foreach (var kwItem in extractedKeywords)
             {
                 var normalized = kwItem.Term.ToLowerInvariant().Trim();
@@ -880,6 +885,11 @@ namespace PaperService.Services
             }
 
             // Keywords Resolution
+            extractedKeywords = extractedKeywords
+                .GroupBy(k => k.Term.ToLowerInvariant().Trim())
+                .Select(g => g.First())
+                .ToList();
+
             foreach (var kwItem in extractedKeywords)
             {
                 var normalized = kwItem.Term.ToLowerInvariant().Trim();
