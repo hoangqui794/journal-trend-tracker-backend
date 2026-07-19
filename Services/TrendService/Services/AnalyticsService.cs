@@ -30,18 +30,34 @@ public class AnalyticsService : IAnalyticsService
         var data = await _repo.GetKeywordTrendAsync(id);
         if (data == null || !data.Any()) return null;
 
-        return new KeywordTrendDto
+        var stats = data.Select(d => new YearlyStatDto
+        {
+            Year = d.Year,
+            PaperCount = d.PaperCount,
+            CitationCount = d.CitationSum,
+            GrowthRate = d.GrowthRate
+        }).ToList();
+        
+        for (int i = 0; i < stats.Count; i++) {
+            stats[i].ForecastPaperCount = CalculateForecast(stats, i);
+        }
+
+        var result = new KeywordTrendDto
         {
             KeywordId = id,
             KeywordTerm = data[0].KeywordTerm,
-            Stats = data.Select(d => new YearlyStatDto
-            {
-                Year = d.Year,
-                PaperCount = d.PaperCount,
-                CitationCount = d.CitationSum,
-                GrowthRate = d.GrowthRate
-            }).ToList()
+            Stats = stats
         };
+
+        return result;
+    }
+    
+    private int? CalculateForecast(List<YearlyStatDto> stats, int i)
+    {
+        if (i == 0) return null;
+        var diff = stats[i].PaperCount - stats[i-1].PaperCount;
+        var forecast = stats[i].PaperCount + diff;
+        return forecast > 0 ? forecast : 0;
     }
 
     public async Task<JournalTrendDto?> GetJournalTrendAsync(Guid id)
@@ -49,17 +65,23 @@ public class AnalyticsService : IAnalyticsService
         var data = await _repo.GetJournalTrendAsync(id);
         if (data == null || !data.Any()) return null;
 
+        var stats = data.Select(d => new YearlyStatDto
+        {
+            Year = d.Year,
+            PaperCount = d.PaperCount,
+            CitationCount = d.CitationSum,
+            GrowthRate = d.GrowthRate
+        }).ToList();
+        
+        for (int i = 0; i < stats.Count; i++) {
+            stats[i].ForecastPaperCount = CalculateForecast(stats, i);
+        }
+
         return new JournalTrendDto
         {
             JournalId = id,
             JournalName = data[0].JournalName,
-            Stats = data.Select(d => new YearlyStatDto
-            {
-                Year = d.Year,
-                PaperCount = d.PaperCount,
-                CitationCount = d.CitationSum,
-                GrowthRate = d.GrowthRate
-            }).ToList()
+            Stats = stats
         };
     }
 
@@ -68,17 +90,23 @@ public class AnalyticsService : IAnalyticsService
         var data = await _repo.GetTopicTrendAsync(id);
         if (data == null || !data.Any()) return null;
 
+        var stats = data.Select(d => new YearlyStatDto
+        {
+            Year = d.Year,
+            PaperCount = d.PaperCount,
+            CitationCount = d.CitationSum,
+            GrowthRate = d.GrowthRate
+        }).ToList();
+        
+        for (int i = 0; i < stats.Count; i++) {
+            stats[i].ForecastPaperCount = CalculateForecast(stats, i);
+        }
+
         return new TopicTrendDto
         {
             TopicId = id,
             TopicName = data[0].TopicName,
-            Stats = data.Select(d => new YearlyStatDto
-            {
-                Year = d.Year,
-                PaperCount = d.PaperCount,
-                CitationCount = d.CitationSum,
-                GrowthRate = d.GrowthRate
-            }).ToList()
+            Stats = stats
         };
     }
 
@@ -87,17 +115,23 @@ public class AnalyticsService : IAnalyticsService
         var data = await _repo.GetAuthorTrendAsync(id);
         if (data == null || !data.Any()) return null;
 
+        var stats = data.Select(d => new YearlyStatDto
+        {
+            Year = d.Year,
+            PaperCount = d.PaperCount,
+            CitationCount = d.CitationSum,
+            GrowthRate = d.GrowthRate
+        }).ToList();
+        
+        for (int i = 0; i < stats.Count; i++) {
+            stats[i].ForecastPaperCount = CalculateForecast(stats, i);
+        }
+
         return new AuthorTrendDto
         {
             AuthorId = id,
             AuthorName = data[0].AuthorName,
-            Stats = data.Select(d => new YearlyStatDto
-            {
-                Year = d.Year,
-                PaperCount = d.PaperCount,
-                CitationCount = d.CitationSum,
-                GrowthRate = d.GrowthRate
-            }).ToList()
+            Stats = stats
         };
     }
 
