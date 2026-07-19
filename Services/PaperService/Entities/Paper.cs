@@ -51,6 +51,12 @@ namespace PaperService.Entities
         [ForeignKey("JournalId")]
         public Journal? Journal { get; set; }
 
+        [Column("pdf_url")]
+        public string? PdfUrl { get; set; }
+
+        [Column("full_text")]
+        public string? FullText { get; set; }
+
         [Column("raw_data", TypeName = "jsonb")]
         public string? RawData { get; set; }
 

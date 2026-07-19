@@ -18,6 +18,7 @@ namespace PaperService.Data
         public DbSet<ApiSyncJob> ApiSyncJobs { get; set; }
         public DbSet<SyncCursor> SyncCursors { get; set; }
         public DbSet<SyncError> SyncErrors { get; set; }
+        public DbSet<ResearchMatrix> ResearchMatrices { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

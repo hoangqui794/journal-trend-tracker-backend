@@ -175,7 +175,7 @@ namespace PaperService.Services
                         string offsetValue = sScholarCursor?.LastCursor ?? "0";
                         if (!int.TryParse(offsetValue, out int offset)) offset = 0;
 
-                        var sScholarUrl = $"https://api.semanticscholar.org/graph/v1/paper/search?query=computer+science&year={DateTime.UtcNow.Year}&limit=10&offset={offset}&fields=paperId,title,abstract,year,externalIds,url,citationCount,referenceCount,authors,venue,s2FieldsOfStudy";
+                        var sScholarUrl = $"https://api.semanticscholar.org/graph/v1/paper/search?query=computer+science&year={DateTime.UtcNow.Year}&limit=10&offset={offset}&fields=paperId,title,abstract,year,externalIds,url,citationCount,referenceCount,authors,venue,s2FieldsOfStudy,openAccessPdf";
 
                         try
                         {
@@ -259,8 +259,6 @@ namespace PaperService.Services
                     }
 
                     // --- RECALCULATE SNAPSHOTS IN TREND SERVICE ---
-                    // TEMPORARILY DISABLED FOR DEMO TO PREVENT HANGS
-                    /*
                     _logger.LogInformation($"Recalculating trend snapshots for {keywordsUpdated.Count} updated keywords...");
                     foreach (var kw in keywordsUpdated)
                     {
@@ -400,7 +398,6 @@ namespace PaperService.Services
                     {
                         _logger.LogError(ex, "Error recalculating trend snapshot for topics.");
                     }
-                    */
 
                     // Update the sync job status to Success
                     job.Status = SyncStatus.Success;
@@ -541,6 +538,27 @@ namespace PaperService.Services
                 return false; // updated
             }
 
+            // Extract Open Access PDF URL from OpenAlex
+            string? pdfUrl = null;
+            if (work.TryGetProperty("open_access", out var oaProp) && oaProp.ValueKind == JsonValueKind.Object)
+            {
+                if (oaProp.TryGetProperty("is_oa", out var isOa) && isOa.GetBoolean())
+                {
+                    if (oaProp.TryGetProperty("oa_url", out var oaUrlProp))
+                    {
+                        pdfUrl = oaUrlProp.GetString();
+                    }
+                }
+            }
+            // Also check best_oa_location for a direct PDF link
+            if (string.IsNullOrWhiteSpace(pdfUrl) && work.TryGetProperty("best_oa_location", out var bestOa) && bestOa.ValueKind == JsonValueKind.Object)
+            {
+                if (bestOa.TryGetProperty("pdf_url", out var pdfUrlProp) && pdfUrlProp.ValueKind == JsonValueKind.String)
+                {
+                    pdfUrl = pdfUrlProp.GetString();
+                }
+            }
+
             // Insert new paper
             var paper = new Paper
             {
@@ -556,6 +574,7 @@ namespace PaperService.Services
                 ReferenceCount = referenceCount,
                 FieldsOfStudy = fieldsOfStudy,
                 JournalId = journal?.Id,
+                PdfUrl = pdfUrl,
                 RawData = JsonSerializer.Serialize(work),
                 SyncedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
@@ -813,6 +832,15 @@ namespace PaperService.Services
                 return false; // updated
             }
 
+            // Extract Open Access PDF URL
+            string? pdfUrl = null;
+            if (paperVal.TryGetProperty("openAccessPdf", out var oaPdfProp) 
+                && oaPdfProp.ValueKind == JsonValueKind.Object
+                && oaPdfProp.TryGetProperty("url", out var oaPdfUrlProp))
+            {
+                pdfUrl = oaPdfUrlProp.GetString();
+            }
+
             // Insert new paper
             var paper = new Paper
             {
@@ -828,6 +856,7 @@ namespace PaperService.Services
                 ReferenceCount = referenceCount,
                 FieldsOfStudy = fieldsOfStudy,
                 JournalId = journal?.Id,
+                PdfUrl = pdfUrl,
                 RawData = JsonSerializer.Serialize(paperVal),
                 SyncedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,

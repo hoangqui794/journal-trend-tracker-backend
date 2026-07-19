@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PaperService.Clients;
+using PaperService.Data;
 using PaperService.DTOs;
+using PaperService.Entities;
 using PaperService.Services;
+using System.Text.Json;
 
 namespace PaperService.Controllers
 {
@@ -11,11 +15,19 @@ namespace PaperService.Controllers
     {
         private readonly IPaperService _paperService;
         private readonly ITrendServiceClient _trendServiceClient;
+        private readonly IResearchAnalysisService _researchAnalysisService;
+        private readonly PaperDbContext _context;
 
-        public PapersController(IPaperService paperService, ITrendServiceClient trendServiceClient)
+        public PapersController(
+            IPaperService paperService, 
+            ITrendServiceClient trendServiceClient,
+            IResearchAnalysisService researchAnalysisService,
+            PaperDbContext context)
         {
             _paperService = paperService;
             _trendServiceClient = trendServiceClient;
+            _researchAnalysisService = researchAnalysisService;
+            _context = context;
         }
 
         /// <summary>
@@ -146,6 +158,89 @@ namespace PaperService.Controllers
         {
             var authors = await _paperService.GetTopAuthorsAsync(top);
             return Ok(authors);
+        }
+
+        /// <summary>
+        /// [HYBRID] Phân tích Research Gap: Chỉ cần truyền ý tưởng lên.
+        /// Hệ thống tự tìm bài báo (DB → OpenAlex) → trích xuất nội dung → gọi AI phân tích.
+        /// </summary>
+        [HttpPost("generate-gap-matrix")]
+        public async Task<ActionResult<GapMatrixResponseDto>> GenerateGapMatrix(
+            [FromBody] GenerateGapMatrixRequestDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.UserIdea))
+                return BadRequest(new { message = "Vui lòng nhập ý tưởng nghiên cứu của bạn." });
+
+            if (request.UserIdea.Length < 10)
+                return BadRequest(new { message = "Ý tưởng quá ngắn, hãy mô tả chi tiết hơn (ít nhất 10 ký tự)." });
+
+            try
+            {
+                var result = await _researchAnalysisService.AnalyzeResearchIdeaAsync(
+                    request.UserIdea,
+                    request.PaperIds);
+
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Lỗi khi phân tích: {ex.Message}" });
+            }
+        }
+
+        /// <summary>
+        /// Upload file PDF cho một bài báo (dành cho bài báo bị paywall không tải tự động được)
+        /// </summary>
+        [HttpPost("{id}/upload-pdf")]
+        public async Task<IActionResult> UploadPdf(Guid id, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "No file uploaded." });
+            }
+
+            if (!file.ContentType.Contains("pdf"))
+            {
+                return BadRequest(new { message = "Only PDF files are accepted." });
+            }
+
+            var paper = await _context.Papers.FindAsync(id);
+            if (paper == null)
+            {
+                return NotFound(new { message = $"Paper with id {id} not found." });
+            }
+
+            // Lưu file vào wwwroot/pdfs
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "pdfs");
+            Directory.CreateDirectory(uploadsDir);
+            var fileName = $"{id}_{Guid.NewGuid():N}.pdf";
+            var filePath = Path.Combine(uploadsDir, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // Trích xuất text từ file đã lưu
+            var pdfUrl = $"{Request.Scheme}://{Request.Host}/pdfs/{fileName}";
+            var aiService = HttpContext.RequestServices.GetRequiredService<IAILiteratureService>();
+            var fullText = await aiService.ExtractTextFromPdfUrlAsync(pdfUrl);
+
+            paper.PdfUrl = pdfUrl;
+            paper.FullText = fullText;
+            paper.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new 
+            { 
+                message = "PDF uploaded and text extracted successfully.",
+                hasFullText = !string.IsNullOrWhiteSpace(fullText),
+                textLength = fullText?.Length ?? 0
+            });
         }
     }
 }
