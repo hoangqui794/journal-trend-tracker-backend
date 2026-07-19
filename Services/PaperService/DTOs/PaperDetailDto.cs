@@ -13,6 +13,8 @@ namespace PaperService.DTOs
         public int CitationCount { get; set; }
         public int ReferenceCount { get; set; }
         public List<string>? FieldsOfStudy { get; set; }
+        public string? PdfUrl { get; set; }
+        public bool HasFullText { get; set; }
         
         public JournalDto? Journal { get; set; }
         public IEnumerable<AuthorDto> Authors { get; set; } = new List<AuthorDto>();
