@@ -29,7 +29,10 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<PaperService.Services.IPaperService, PaperService.Services.PaperServiceImpl>();
 builder.Services.AddScoped<PaperService.Services.ISyncJobService, PaperService.Services.SyncJobServiceImpl>();
+builder.Services.AddScoped<PaperService.Services.IAILiteratureService, PaperService.Services.AILiteratureService>();
+builder.Services.AddScoped<PaperService.Services.IResearchAnalysisService, PaperService.Services.ResearchAnalysisService>();
 builder.Services.AddHostedService<PaperService.Services.PaperSyncWorker>();
+builder.Services.AddHttpClient();
 
 // Register HTTP Clients
 builder.Services.AddHttpClient<PaperService.Clients.ITrendServiceClient, PaperService.Clients.TrendServiceClient>(client =>
@@ -41,12 +44,6 @@ builder.Services.AddHttpClient<PaperService.Clients.ITrendServiceClient, PaperSe
 builder.Services.AddHttpClient<PaperService.Clients.IUserServiceClient, PaperService.Clients.UserServiceClient>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:UserService"] ?? "http://localhost:5004");
-    client.Timeout = TimeSpan.FromSeconds(5);
-});
-
-builder.Services.AddHttpClient<PaperService.Clients.IAdminServiceClient, PaperService.Clients.AdminServiceClient>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["ServiceUrls:AdminService"] ?? "http://localhost:5005");
     client.Timeout = TimeSpan.FromSeconds(5);
 });
 
@@ -84,11 +81,26 @@ app.UseSwaggerUI();
 
 // app.UseHttpsRedirection();
 
+app.UseStaticFiles(); // Serve uploaded PDFs from wwwroot/pdfs
+app.UseRouting();
 app.UseCors("AllowAll");
 
 app.MapControllers();
 
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/api/papers/health");
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<PaperDbContext>();
+    try
+    {
+        dbContext.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Migration failed: {ex.Message}");
+    }
+}
 
 app.Run();

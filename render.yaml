@@ -18,9 +18,9 @@ envVarGroups:
       - key: Services__IdentityService
         value: https://identity-service-6r7e.onrender.com
       - key: Services__PaperBaseUrl
-        value: https://paper-service-ynmc.onrender.com
+        value: https://prn-paperservice.onrender.com
       - key: ServiceUrls__PaperService
-        value: https://paper-service-ynmc.onrender.com
+        value: https://prn-paperservice.onrender.com
       - key: ServiceUrls__TrendService
         value: https://trend-service-ab5q.onrender.com
       - key: ServiceUrls__UserService

@@ -34,10 +34,11 @@ namespace PaperService.Services
             using var scope = _serviceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<PaperDbContext>();
             
-            await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE papers, journals, authors, keywords, sync_cursors, api_sync_jobs, sync_errors CASCADE;", stoppingToken);
+            // CHỈ XÓA CURSOR ĐỂ BẢO TOÀN BÀI BÁO CŨ
+            await context.Database.ExecuteSqlRawAsync("TRUNCATE TABLE sync_cursors;", stoppingToken);
             await context.Database.ExecuteSqlRawAsync("INSERT INTO sync_cursors (id, source_name, updated_at) VALUES (gen_random_uuid(), 'OpenAlex', NOW()), (gen_random_uuid(), 'SemanticScholar', NOW()), (gen_random_uuid(), 'Crossref', NOW());", stoppingToken);
             
-            _logger.LogInformation("Mock data wiped successfully.");
+            _logger.LogInformation("Cursors wiped successfully. Papers preserved.");
         }
 
         public async Task DoSyncWorkAsync(CancellationToken stoppingToken)
@@ -49,11 +50,9 @@ namespace PaperService.Services
                 var context = scope.ServiceProvider.GetRequiredService<PaperDbContext>();
                 var userServiceClient = scope.ServiceProvider.GetRequiredService<IUserServiceClient>();
                 var trendServiceClient = scope.ServiceProvider.GetRequiredService<ITrendServiceClient>();
-                var adminServiceClient = scope.ServiceProvider.GetRequiredService<IAdminServiceClient>();
-
-                var apiSources = await adminServiceClient.GetApiSourcesAsync();
-                bool isOpenAlexActive = apiSources.FirstOrDefault(s => s.Name.Contains("OpenAlex", StringComparison.OrdinalIgnoreCase))?.IsActive ?? true;
-                bool isSemanticScholarActive = apiSources.FirstOrDefault(s => s.Name.Contains("Semantic", StringComparison.OrdinalIgnoreCase) || s.Name.Contains("Scholar", StringComparison.OrdinalIgnoreCase))?.IsActive ?? true;
+                // AdminService is not available on Render - hardcode both sources as active
+                bool isOpenAlexActive = true;
+                bool isSemanticScholarActive = true;
 
                 // Create a new ApiSyncJob record in the database
                 var job = new ApiSyncJob
@@ -90,8 +89,7 @@ namespace PaperService.Services
                         _logger.LogInformation("Starting OpenAlex Sync...");
                         var openAlexCursor = await context.SyncCursors.FirstOrDefaultAsync(c => c.SourceName == "OpenAlex", stoppingToken);
                         string cursorValue = openAlexCursor?.LastCursor ?? "*";
-
-                        var openAlexUrl = $"https://api.openalex.org/works?filter=default.search:\"Computer Science\",publication_year:{DateTime.UtcNow.Year}&per_page=10&cursor={Uri.EscapeDataString(cursorValue)}";
+                        var openAlexUrl = $"https://api.openalex.org/works?filter=default.search:computer,publication_year:2025&per_page=10&cursor={Uri.EscapeDataString(cursorValue)}&mailto=sonngocson25@gmail.com";
                         
                         try
                         {
@@ -177,7 +175,7 @@ namespace PaperService.Services
                         string offsetValue = sScholarCursor?.LastCursor ?? "0";
                         if (!int.TryParse(offsetValue, out int offset)) offset = 0;
 
-                        var sScholarUrl = $"https://api.semanticscholar.org/graph/v1/paper/search?query=computer+science&year={DateTime.UtcNow.Year}&limit=10&offset={offset}&fields=paperId,title,abstract,year,externalIds,url,citationCount,referenceCount,authors,venue,s2FieldsOfStudy";
+                        var sScholarUrl = $"https://api.semanticscholar.org/graph/v1/paper/search?query=computer+science&year={DateTime.UtcNow.Year}&limit=10&offset={offset}&fields=paperId,title,abstract,year,externalIds,url,citationCount,referenceCount,authors,venue,s2FieldsOfStudy,openAccessPdf";
 
                         try
                         {
@@ -260,7 +258,7 @@ namespace PaperService.Services
                         _logger.LogInformation("Semantic Scholar sync is disabled via Admin settings. Skipping.");
                     }
 
-                    // 3. --- RECALCULATE SNAPSHOTS IN TREND SERVICE ---
+                    // --- RECALCULATE SNAPSHOTS IN TREND SERVICE ---
                     _logger.LogInformation($"Recalculating trend snapshots for {keywordsUpdated.Count} updated keywords...");
                     foreach (var kw in keywordsUpdated)
                     {
@@ -540,6 +538,27 @@ namespace PaperService.Services
                 return false; // updated
             }
 
+            // Extract Open Access PDF URL from OpenAlex
+            string? pdfUrl = null;
+            if (work.TryGetProperty("open_access", out var oaProp) && oaProp.ValueKind == JsonValueKind.Object)
+            {
+                if (oaProp.TryGetProperty("is_oa", out var isOa) && isOa.GetBoolean())
+                {
+                    if (oaProp.TryGetProperty("oa_url", out var oaUrlProp))
+                    {
+                        pdfUrl = oaUrlProp.GetString();
+                    }
+                }
+            }
+            // Also check best_oa_location for a direct PDF link
+            if (string.IsNullOrWhiteSpace(pdfUrl) && work.TryGetProperty("best_oa_location", out var bestOa) && bestOa.ValueKind == JsonValueKind.Object)
+            {
+                if (bestOa.TryGetProperty("pdf_url", out var pdfUrlProp) && pdfUrlProp.ValueKind == JsonValueKind.String)
+                {
+                    pdfUrl = pdfUrlProp.GetString();
+                }
+            }
+
             // Insert new paper
             var paper = new Paper
             {
@@ -555,6 +574,7 @@ namespace PaperService.Services
                 ReferenceCount = referenceCount,
                 FieldsOfStudy = fieldsOfStudy,
                 JournalId = journal?.Id,
+                PdfUrl = pdfUrl,
                 RawData = JsonSerializer.Serialize(work),
                 SyncedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
@@ -606,12 +626,15 @@ namespace PaperService.Services
                                 await context.SaveChangesAsync(stoppingToken);
                             }
 
-                            authorLinks.Add(new PaperAuthor
+                            if (!authorLinks.Any(al => al.AuthorId == author.Id))
                             {
-                                PaperId = paper.Id,
-                                AuthorId = author.Id,
-                                AuthorOrder = order++
-                            });
+                                authorLinks.Add(new PaperAuthor
+                                {
+                                    PaperId = paper.Id,
+                                    AuthorId = author.Id,
+                                    AuthorOrder = order++
+                                });
+                            }
                         }
                     }
                 }
@@ -654,6 +677,11 @@ namespace PaperService.Services
                 }
             }
 
+            extractedKeywords = extractedKeywords
+                .GroupBy(k => k.Term.ToLowerInvariant().Trim())
+                .Select(g => g.First())
+                .ToList();
+
             foreach (var kwItem in extractedKeywords)
             {
                 var normalized = kwItem.Term.ToLowerInvariant().Trim();
@@ -691,6 +719,7 @@ namespace PaperService.Services
                 await context.SaveChangesAsync(stoppingToken);
 
                 // Trigger Notification to UserService
+                /* TEMPORARILY DISABLED
                 var notificationDto = new NotificationTriggerDto
                 {
                     Keyword = keyword.Term,
@@ -698,6 +727,7 @@ namespace PaperService.Services
                     PaperTitle = paper.Title
                 };
                 await userServiceClient.TriggerNotificationAsync(notificationDto);
+                */
             }
 
             return true; // inserted
@@ -777,8 +807,14 @@ namespace PaperService.Services
                         var cat = catProp.GetString();
                         if (!string.IsNullOrWhiteSpace(cat))
                         {
-                            fieldsOfStudy.Add(cat);
-                            extractedKeywords.Add((cat, 0.9));
+                            if (!fieldsOfStudy.Contains(cat))
+                            {
+                                fieldsOfStudy.Add(cat);
+                            }
+                            if (!extractedKeywords.Any(k => k.Term.Equals(cat, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                extractedKeywords.Add((cat, 0.9));
+                            }
                         }
                     }
                 }
@@ -796,6 +832,15 @@ namespace PaperService.Services
                 return false; // updated
             }
 
+            // Extract Open Access PDF URL
+            string? pdfUrl = null;
+            if (paperVal.TryGetProperty("openAccessPdf", out var oaPdfProp) 
+                && oaPdfProp.ValueKind == JsonValueKind.Object
+                && oaPdfProp.TryGetProperty("url", out var oaPdfUrlProp))
+            {
+                pdfUrl = oaPdfUrlProp.GetString();
+            }
+
             // Insert new paper
             var paper = new Paper
             {
@@ -811,6 +856,7 @@ namespace PaperService.Services
                 ReferenceCount = referenceCount,
                 FieldsOfStudy = fieldsOfStudy,
                 JournalId = journal?.Id,
+                PdfUrl = pdfUrl,
                 RawData = JsonSerializer.Serialize(paperVal),
                 SyncedAt = DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
@@ -847,12 +893,15 @@ namespace PaperService.Services
                             await context.SaveChangesAsync(stoppingToken);
                         }
 
-                        authorLinks.Add(new PaperAuthor
+                        if (!authorLinks.Any(al => al.AuthorId == author.Id))
                         {
-                            PaperId = paper.Id,
-                            AuthorId = author.Id,
-                            AuthorOrder = order++
-                        });
+                            authorLinks.Add(new PaperAuthor
+                            {
+                                PaperId = paper.Id,
+                                AuthorId = author.Id,
+                                AuthorOrder = order++
+                            });
+                        }
                     }
                 }
             }
@@ -864,6 +913,11 @@ namespace PaperService.Services
             }
 
             // Keywords Resolution
+            extractedKeywords = extractedKeywords
+                .GroupBy(k => k.Term.ToLowerInvariant().Trim())
+                .Select(g => g.First())
+                .ToList();
+
             foreach (var kwItem in extractedKeywords)
             {
                 var normalized = kwItem.Term.ToLowerInvariant().Trim();
@@ -901,6 +955,7 @@ namespace PaperService.Services
                 await context.SaveChangesAsync(stoppingToken);
 
                 // Trigger Notification to UserService
+                /* TEMPORARILY DISABLED
                 var notificationDto = new NotificationTriggerDto
                 {
                     Keyword = keyword.Term,
@@ -908,6 +963,7 @@ namespace PaperService.Services
                     PaperTitle = paper.Title
                 };
                 await userServiceClient.TriggerNotificationAsync(notificationDto);
+                */
             }
 
             return true; // inserted
