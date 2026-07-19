@@ -209,10 +209,14 @@ public class AnalyticsService : IAnalyticsService
 
     public async Task RecalculateTopicSnapshotAsync(RecalculateTopicSnapshotDto dto)
     {
+        using var md5 = System.Security.Cryptography.MD5.Create();
+        var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(dto.TopicId.ToLowerInvariant()));
+        var topicGuid = new Guid(hash);
+
         var snapshot = new TopicTrendSnapshot
         {
             Id = Guid.NewGuid(),
-            TopicId = dto.TopicId,
+            TopicId = topicGuid,
             TopicName = dto.TopicName,
             Year = (short)dto.Year,
             PaperCount = dto.PaperCount,

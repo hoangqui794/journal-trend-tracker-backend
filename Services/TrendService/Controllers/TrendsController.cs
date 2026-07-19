@@ -199,7 +199,7 @@ public class TrendsController : ControllerBase
         if (!IsInternalRequestValid())
             return StatusCode(403, "Forbidden: Invalid Internal Secret");
 
-        if (dto.TopicId == Guid.Empty)
+        if (string.IsNullOrWhiteSpace(dto.TopicId))
             return BadRequest("TopicId không hợp lệ.");
         await _service.RecalculateTopicSnapshotAsync(dto);
         return Ok();

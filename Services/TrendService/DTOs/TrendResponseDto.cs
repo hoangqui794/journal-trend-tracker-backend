@@ -114,7 +114,7 @@ public class RecalculateJournalSnapshotDto
 
 public class RecalculateTopicSnapshotDto
 {
-    public Guid TopicId { get; set; }
+    public string TopicId { get; set; } = string.Empty;
     public string TopicName { get; set; } = string.Empty;
     public int Year { get; set; }
     public int PaperCount { get; set; }
