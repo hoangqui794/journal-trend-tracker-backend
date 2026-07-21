@@ -46,6 +46,25 @@ public class TrendRepository : ITrendRepository
             .ToListAsync();
     }
 
+    public async Task<List<TopAuthorDto>> GetTopAuthorsAsync(int top)
+    {
+        var list = await _context.AuthorTrendSnapshots
+            .GroupBy(a => new { a.AuthorId, a.AuthorName })
+            .Select(g => new TopAuthorDto
+            {
+                AuthorId = g.Key.AuthorId,
+                Name = g.Key.AuthorName,
+                Affiliation = null,
+                PaperCount = g.Sum(x => x.PaperCount)
+            })
+            .OrderByDescending(a => a.PaperCount)
+            .Take(top)
+            .ToListAsync();
+            
+        foreach(var item in list) { item.TrendStatus = GetTrendStatus(0); /* Authors might not have growth rate in this repo logic but let's give default */ }
+        return list;
+    }
+
     public async Task<List<JournalTrendSnapshot>> GetTopJournalsAsync(int top)
     {
         return await _context.JournalTrendSnapshots
@@ -65,7 +84,7 @@ public class TrendRepository : ITrendRepository
 
     public async Task<List<TopKeywordDto>> GetTopKeywordsAsync(int top)
     {
-        return await _context.TrendSnapshots
+        var list = await _context.TrendSnapshots
             .GroupBy(t => new { t.KeywordId, t.KeywordTerm })
             .Select(g => new TopKeywordDto
             {
@@ -79,12 +98,18 @@ public class TrendRepository : ITrendRepository
             .OrderByDescending(t => t.PaperCount)
             .Take(top)
             .ToListAsync();
+            
+        foreach (var item in list)
+        {
+            item.TrendStatus = GetTrendStatus(item.GrowthRate);
+        }
+        return list;
     }
 
     public async Task<List<TopTopicDto>> GetHotTopicsAsync(int top)
     {
         var currentYear = (short)DateTime.UtcNow.Year;
-        return await _context.TopicTrendSnapshots
+        var list = await _context.TopicTrendSnapshots
             .Where(t => t.Year == currentYear || t.Year == currentYear - 1)
             .GroupBy(t => new { t.TopicId, t.TopicName })
             .Select(g => new TopTopicDto
@@ -98,6 +123,20 @@ public class TrendRepository : ITrendRepository
             .ThenByDescending(t => t.PaperCount)
             .Take(top)
             .ToListAsync();
+            
+        foreach (var item in list)
+        {
+            item.TrendStatus = GetTrendStatus(item.GrowthRate);
+        }
+        return list;
+    }
+    
+    private string GetTrendStatus(double? growthRate)
+    {
+        if (!growthRate.HasValue) return "📈 Stable";
+        if (growthRate.Value > 20) return "🔥 Hot";
+        if (growthRate.Value < 0) return "📉 Declining";
+        return "📈 Stable";
     }
 
     public async Task<TrendOverviewDto> GetOverviewAsync()

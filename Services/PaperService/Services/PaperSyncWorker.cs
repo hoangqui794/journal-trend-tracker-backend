@@ -26,12 +26,12 @@ namespace PaperService.Services
             try
             {
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
-                _logger.LogInformation("Running initial startup synchronization...");
-                using (var scope = _serviceProvider.CreateScope())
-                {
-                    var syncJobService = scope.ServiceProvider.GetRequiredService<ISyncJobService>();
-                    await syncJobService.DoSyncWorkAsync(stoppingToken);
-                }
+                _logger.LogInformation("Skipping initial startup synchronization to prevent blocking...");
+                // using (var scope = _serviceProvider.CreateScope())
+                // {
+                //     var syncJobService = scope.ServiceProvider.GetRequiredService<ISyncJobService>();
+                //     await syncJobService.DoSyncWorkAsync(stoppingToken);
+                // }
             }
             catch (TaskCanceledException)
             {

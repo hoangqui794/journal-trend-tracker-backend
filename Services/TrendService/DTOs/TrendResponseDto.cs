@@ -42,6 +42,7 @@ public class YearlyStatDto
     public int PaperCount { get; set; }
     public int CitationCount { get; set; }
     public double? GrowthRate { get; set; }
+    public int? ForecastPaperCount { get; set; }
 }
 
 public class TopKeywordDto
@@ -50,6 +51,7 @@ public class TopKeywordDto
     public string KeywordTerm { get; set; } = string.Empty;
     public int PaperCount { get; set; }
     public double? GrowthRate { get; set; }
+    public string TrendStatus { get; set; } = string.Empty;
 }
 
 public class JournalTrendSummaryDto
@@ -66,6 +68,7 @@ public class TopTopicDto
     public string TopicName { get; set; } = string.Empty;
     public int PaperCount { get; set; }
     public double? GrowthRate { get; set; }
+    public string TrendStatus { get; set; } = string.Empty;
 }
 
 public class HotTopicDto
@@ -80,6 +83,7 @@ public class TopAuthorDto
     public string Name { get; set; } = string.Empty;
     public string? Affiliation { get; set; }
     public int PaperCount { get; set; }
+    public string TrendStatus { get; set; } = string.Empty;
 }
 
 public class SearchHistoryLogDto
@@ -110,7 +114,7 @@ public class RecalculateJournalSnapshotDto
 
 public class RecalculateTopicSnapshotDto
 {
-    public Guid TopicId { get; set; }
+    public string TopicId { get; set; } = string.Empty;
     public string TopicName { get; set; } = string.Empty;
     public int Year { get; set; }
     public int PaperCount { get; set; }

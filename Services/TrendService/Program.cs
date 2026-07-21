@@ -11,6 +11,7 @@ using Microsoft.OpenApi.Models;
 Env.TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddMemoryCache();
 
 // ── Database ──────────────────────────────────────────────────
 var connectionString = builder.Configuration.GetConnectionString("TrendConnection")

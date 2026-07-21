@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using TrendService.DTOs;
 using TrendService.Services;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace TrendService.Controllers;
 
@@ -13,16 +14,20 @@ public class TrendsController : ControllerBase
     private readonly IExportService _exportService;
     private readonly ILogger<TrendsController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IMemoryCache _cache;
 
     public TrendsController(
         IAnalyticsService service,
         IExportService exportService,
         ILogger<TrendsController> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IMemoryCache cache)
     {
         _service = service;
         _exportService = exportService;
         _logger = logger;
+        _configuration = configuration;
+        _cache = cache;
         _configuration = configuration;
     }
 
@@ -96,7 +101,11 @@ public class TrendsController : ControllerBase
     [HttpGet("top-keywords")]
     public async Task<IActionResult> GetTopKeywords()
     {
-        var result = await _service.GetTopKeywordsAsync(5);
+        if (!_cache.TryGetValue("TopKeywords", out List<TopKeywordDto>? result))
+        {
+            result = await _service.GetTopKeywordsAsync(5);
+            _cache.Set("TopKeywords", result, TimeSpan.FromMinutes(5));
+        }
         return Ok(result);
     }
 
@@ -112,7 +121,11 @@ public class TrendsController : ControllerBase
     [HttpGet("hot-topics")]
     public async Task<IActionResult> GetHotTopics()
     {
-        var result = await _service.GetHotTopicsAsync(5);
+        if (!_cache.TryGetValue("HotTopics", out List<TopTopicDto>? result))
+        {
+            result = await _service.GetHotTopicsAsync(5);
+            _cache.Set("HotTopics", result, TimeSpan.FromMinutes(5));
+        }
         return Ok(result);
     }
 
@@ -186,7 +199,7 @@ public class TrendsController : ControllerBase
         if (!IsInternalRequestValid())
             return StatusCode(403, "Forbidden: Invalid Internal Secret");
 
-        if (dto.TopicId == Guid.Empty)
+        if (string.IsNullOrWhiteSpace(dto.TopicId))
             return BadRequest("TopicId không hợp lệ.");
         await _service.RecalculateTopicSnapshotAsync(dto);
         return Ok();
