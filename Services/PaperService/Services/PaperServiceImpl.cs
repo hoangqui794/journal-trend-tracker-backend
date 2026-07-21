@@ -105,6 +105,8 @@ namespace PaperService.Services
                 PublicationYear = paper.PublicationYear,
                 Doi = paper.Doi,
                 Url = paper.Url,
+                PdfUrl = paper.PdfUrl,
+                HasFullText = !string.IsNullOrWhiteSpace(paper.FullText),
                 CitationCount = paper.CitationCount,
                 ReferenceCount = paper.ReferenceCount,
                 FieldsOfStudy = paper.FieldsOfStudy,
