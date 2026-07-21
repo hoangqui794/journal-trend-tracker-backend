@@ -242,5 +242,59 @@ namespace PaperService.Controllers
                 textLength = fullText?.Length ?? 0
             });
         }
+        /// <summary>
+        /// Upload file PDF và phân tích chuyên sâu nội dung bằng AI
+        /// </summary>
+        [HttpPost("{id}/deep-analyze")]
+        public async Task<IActionResult> DeepAnalyzePdf(Guid id, IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                return BadRequest(new { message = "No file uploaded." });
+            }
+
+            if (!file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) && !file.ContentType.Contains("pdf"))
+            {
+                return BadRequest(new { message = "Only PDF files are accepted." });
+            }
+
+            var paper = await _context.Papers.FindAsync(id);
+            if (paper == null)
+            {
+                return NotFound(new { message = $"Paper with id {id} not found." });
+            }
+
+            // Lưu file vào wwwroot/pdfs
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "pdfs");
+            Directory.CreateDirectory(uploadsDir);
+            var fileName = $"{id}_{Guid.NewGuid():N}.pdf";
+            var filePath = Path.Combine(uploadsDir, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // Trích xuất text từ file đã lưu
+            var pdfUrl = $"{Request.Scheme}://{Request.Host}/pdfs/{fileName}";
+            var aiService = HttpContext.RequestServices.GetRequiredService<IAILiteratureService>();
+            var fullText = await aiService.ExtractTextFromPdfFileAsync(filePath);
+
+            // Cập nhật Database
+            paper.PdfUrl = pdfUrl;
+            paper.FullText = fullText;
+            paper.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            if (string.IsNullOrWhiteSpace(fullText))
+            {
+                return BadRequest(new { message = "Could not extract text from PDF." });
+            }
+
+            // Gọi AI để phân tích chuyên sâu
+            var analysisResult = await aiService.DeepAnalyzePaperAsync(fullText);
+
+            return Ok(analysisResult);
+        }
     }
 }

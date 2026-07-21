@@ -24,6 +24,57 @@ namespace PaperService.Services
             _httpClientFactory = httpClientFactory;
         }
 
+        public async Task<string?> ExtractTextFromPdfFileAsync(string filePath, CancellationToken ct = default)
+        {
+            try
+            {
+                _logger.LogInformation("Extracting text from local PDF file: {Path}", filePath);
+                if (!System.IO.File.Exists(filePath))
+                {
+                    _logger.LogWarning("File not found: {Path}", filePath);
+                    return null;
+                }
+
+                var pdfBytes = await System.IO.File.ReadAllBytesAsync(filePath, ct);
+                
+                // Dùng iText7 để đọc text từ PDF bytes
+                using var memoryStream = new MemoryStream(pdfBytes);
+                using var pdfReader = new PdfReader(memoryStream);
+                using var pdfDocument = new PdfDocument(pdfReader);
+                
+                var sb = new StringBuilder();
+                for (int i = 1; i <= pdfDocument.GetNumberOfPages(); i++)
+                {
+                    var page = pdfDocument.GetPage(i);
+                    var strategy = new SimpleTextExtractionStrategy();
+                    var pageText = PdfTextExtractor.GetTextFromPage(page, strategy);
+                    sb.AppendLine(pageText);
+                }
+
+                var fullText = sb.ToString().Trim();
+                
+                if (string.IsNullOrWhiteSpace(fullText))
+                {
+                    _logger.LogWarning("PDF read but no text extracted (might be scanned/image PDF)");
+                    return null;
+                }
+
+                // Giới hạn text để tránh quá lớn (max ~50,000 ký tự = ~12,500 tokens)
+                if (fullText.Length > 50000)
+                {
+                    fullText = fullText.Substring(0, 50000);
+                }
+
+                _logger.LogInformation("Successfully extracted {Length} characters from PDF", fullText.Length);
+                return fullText;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting text from PDF file: {Path}", filePath);
+                return null;
+            }
+        }
+
         /// <summary>
         /// Tải file PDF từ URL, trích xuất toàn bộ text bên trong bằng iText7
         /// </summary>
@@ -198,6 +249,75 @@ I will provide you with the content of {papers.Count} research papers and my pro
             {
                 _logger.LogError(ex, "Error calling Gemini AI");
                 throw;
+            }
+        }
+        public async Task<DTOs.DeepAnalysisResultDto> DeepAnalyzePaperAsync(string fullText, CancellationToken ct = default)
+        {
+            var apiKey = _config["GeminiApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                _logger.LogError("API key is not configured.");
+                throw new InvalidOperationException("AI Service is not configured properly.");
+            }
+
+            var prompt = $@"You are an expert academic researcher. Please perform a deep analysis of the following research paper text.
+Extract and summarize the information into 4 distinct sections. Return your analysis STRICTLY in valid JSON format using the following structure:
+{{
+  ""summary"": ""A high-level summary of the paper's core objective and main contribution."",
+  ""methodology"": ""A detailed description of the methods, models, datasets, or experiments used in the paper."",
+  ""findings"": ""The core results, findings, and conclusions of the paper."",
+  ""limitations"": ""Any limitations, future work, or gaps identified by the authors.""
+}}
+
+Ensure that the output is ONLY JSON and contains no markdown formatting outside of the JSON structure.
+Here is the text of the paper:
+---------------------------
+{fullText}";
+
+            try
+            {
+                _logger.LogInformation("Sending request to Gemini AI for deep paper analysis...");
+                
+                var googleAi = new GoogleAI(apiKey);
+                var model = googleAi.GenerativeModel(model: "gemini-flash-latest");
+                
+                var response = await model.GenerateContent(prompt);
+                var responseText = response?.Text ?? string.Empty;
+                
+                _logger.LogInformation("Gemini deep analysis response received.");
+
+                responseText = responseText.Trim();
+                if (responseText.StartsWith("```json"))
+                {
+                    responseText = responseText.Substring(7);
+                }
+                if (responseText.StartsWith("```"))
+                {
+                    responseText = responseText.Substring(3);
+                }
+                if (responseText.EndsWith("```"))
+                {
+                    responseText = responseText.Substring(0, responseText.Length - 3);
+                }
+                responseText = responseText.Trim();
+
+                var result = JsonSerializer.Deserialize<DTOs.DeepAnalysisResultDto>(responseText, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                return result ?? new DTOs.DeepAnalysisResultDto 
+                { 
+                    Summary = "AI returned an empty response. Please try again." 
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error calling Gemini AI for deep analysis");
+                return new DTOs.DeepAnalysisResultDto
+                {
+                    Summary = $"AI analysis failed: {ex.Message}"
+                };
             }
         }
     }
