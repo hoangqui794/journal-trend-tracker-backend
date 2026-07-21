@@ -4,6 +4,7 @@ using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using Mscc.GenerativeAI;
+using Mscc.GenerativeAI.Types;
 using PaperService.Entities;
 
 namespace PaperService.Services
@@ -147,56 +148,99 @@ namespace PaperService.Services
                 throw new InvalidOperationException("GeminiApiKey is not configured. Add it to .env or appsettings.json");
             }
 
-            // Xây dựng nội dung các bài báo để gửi cho AI
-            var papersContent = new StringBuilder();
+            _logger.LogInformation("Gemini API Key in use: {Prefix}...{Suffix} (Length: {Length})", 
+                apiKey.Length > 4 ? apiKey.Substring(0, 4) : apiKey,
+                apiKey.Length > 4 ? apiKey.Substring(apiKey.Length - 4) : string.Empty,
+                apiKey.Length);
+
+            var parts = new List<IPart>();
+
+            // Xây dựng prompt text chỉ dẫn AI
+            var promptBuilder = new StringBuilder();
+            promptBuilder.AppendLine("You are an expert academic researcher specializing in literature review and research gap analysis.");
+            promptBuilder.AppendLine($"I will provide you with the content of {papers.Count} research papers and my proposed research idea.");
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine($"**My Research Idea:** {userIdea}");
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine("Below are the papers. If a paper has an attached PDF document, please read the PDF directly. If it fails to load or is not attached, its abstract or linear text content is provided below.");
+            promptBuilder.AppendLine();
+
             for (int i = 0; i < papers.Count; i++)
             {
                 var p = papers[i];
-                papersContent.AppendLine($"--- Paper [{i + 1}]: \"{p.Title}\" ---");
-                
-                if (!string.IsNullOrWhiteSpace(p.FullText))
+                promptBuilder.AppendLine($"--- Paper [{i + 1}]: \"{p.Title}\" ---");
+
+                byte[]? pdfBytes = null;
+                if (!string.IsNullOrWhiteSpace(p.PdfUrl))
                 {
-                    // Giới hạn mỗi bài tối đa 8000 ký tự để không vượt quá context window
-                    var text = p.FullText.Length > 8000 ? p.FullText.Substring(0, 8000) : p.FullText;
-                    papersContent.AppendLine(text);
+                    try
+                    {
+                        _logger.LogInformation("Downloading PDF for Gemini analysis: {Url}", p.PdfUrl);
+                        var client = _httpClientFactory.CreateClient();
+                        client.Timeout = TimeSpan.FromSeconds(30);
+                        var response = await client.GetAsync(p.PdfUrl, ct);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            pdfBytes = await response.Content.ReadAsByteArrayAsync(ct);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Failed to download PDF for analysis from {Url}. Status: {Status}", p.PdfUrl, response.StatusCode);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to download PDF from {Url} for Gemini analysis, falling back to abstract/text.", p.PdfUrl);
+                    }
                 }
-                else if (!string.IsNullOrWhiteSpace(p.Abstract))
+
+                if (pdfBytes != null)
                 {
-                    papersContent.AppendLine($"Abstract: {p.Abstract}");
+                    promptBuilder.AppendLine($"[Attached PDF file: Paper_{i + 1}.pdf]");
+                    parts.Add(new InlineData
+                    {
+                        MimeType = "application/pdf",
+                        Data = Convert.ToBase64String(pdfBytes),
+                        DisplayName = $"Paper_{i + 1}.pdf"
+                    });
                 }
                 else
                 {
-                    papersContent.AppendLine("(No content available)");
+                    if (!string.IsNullOrWhiteSpace(p.FullText))
+                    {
+                        var text = p.FullText.Length > 8000 ? p.FullText.Substring(0, 8000) : p.FullText;
+                        promptBuilder.AppendLine(text);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(p.Abstract))
+                    {
+                        promptBuilder.AppendLine($"Abstract: {p.Abstract}");
+                    }
+                    else
+                    {
+                        promptBuilder.AppendLine("(No abstract or PDF file available)");
+                    }
                 }
-                papersContent.AppendLine();
+                promptBuilder.AppendLine();
             }
 
-            // Prompt Engineering - Câu lệnh gửi cho AI
-            var prompt = $@"You are an expert academic researcher specializing in literature review and research gap analysis.
-
-I will provide you with the content of {papers.Count} research papers and my proposed research idea.
-
-**My Research Idea:** {userIdea}
-
-**Papers Content:**
-{papersContent}
-
-**Your Task:**
-1. Identify 5-8 core methodologies, features, or research dimensions (called ""Core"") that are discussed across these papers.
+            promptBuilder.AppendLine(@"**Your Task:**
+1. Identify 5-8 core methodologies, features, or research dimensions (called ""Core"") that are discussed across these papers (using the attached PDFs and text).
 2. Create a comparison matrix showing which paper addresses which Core dimension.
 3. Identify research gaps - dimensions that NO paper fully addresses.
 4. Evaluate my proposed idea against these dimensions.
 
 **IMPORTANT: Return ONLY valid JSON in this exact format, no markdown, no explanation:**
-{{
+{
   ""cores"": [""Core 1 description"", ""Core 2 description"", ""Core 3 description""],
   ""matrix"": [
-    {{""paper"": ""Short title of Paper [1]"", ""ticks"": [true, false, true]}},
-    {{""paper"": ""Short title of Paper [2]"", ""ticks"": [false, true, false]}},
-    {{""paper"": ""My Proposed Idea"", ""ticks"": [true, true, true]}}
+    {""paper"": ""Short title of Paper [1]"", ""ticks"": [true, false, true]},
+    {""paper"": ""Short title of Paper [2]"", ""ticks"": [false, true, false]},
+    {""paper"": ""My Proposed Idea"", ""ticks"": [true, true, true]}
   ],
   ""summary"": ""A brief 2-3 sentence summary of the key research gaps identified and how the proposed idea addresses them.""
-}}";
+}");
+
+            parts.Add(new Part(promptBuilder.ToString()));
 
             try
             {
@@ -205,13 +249,12 @@ I will provide you with the content of {papers.Count} research papers and my pro
                 var googleAi = new GoogleAI(apiKey);
                 var model = googleAi.GenerativeModel(model: "gemini-flash-latest");
                 
-                var response = await model.GenerateContent(prompt);
+                var response = await model.GenerateContent(parts);
                 var responseText = response?.Text ?? string.Empty;
                 
                 _logger.LogInformation("Gemini response received. Length: {Length}", responseText.Length);
 
                 // Parse JSON response từ AI
-                // Loại bỏ markdown code block nếu AI trả về có bọc ```json ... ```
                 responseText = responseText.Trim();
                 if (responseText.StartsWith("```json"))
                 {
