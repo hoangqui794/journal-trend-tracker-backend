@@ -97,6 +97,11 @@ namespace PaperService.Services
                 throw new InvalidOperationException("GeminiApiKey is not configured. Add it to .env or appsettings.json");
             }
 
+            _logger.LogInformation("Gemini API Key in use: {Prefix}...{Suffix} (Length: {Length})", 
+                apiKey.Length > 4 ? apiKey.Substring(0, 4) : apiKey,
+                apiKey.Length > 4 ? apiKey.Substring(apiKey.Length - 4) : string.Empty,
+                apiKey.Length);
+
             var parts = new List<IPart>();
 
             // Xây dựng prompt text chỉ dẫn AI
